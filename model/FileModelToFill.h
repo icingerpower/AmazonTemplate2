@@ -7,7 +7,8 @@ class FileModelToFill : public QFileSystemModel
 {
 public:
     FileModelToFill(const QString &dirPath, QObject *parent = nullptr);
-    QList<QFileInfo> getFilePaths() const;
+    QList<QFileInfo> getFileInfos() const;
+    QStringList getFilePaths() const;
 };
 
 #endif // FILEMODELTOFILL_H

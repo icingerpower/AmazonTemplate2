@@ -8,7 +8,8 @@ class FileModelSources : public QFileSystemModel
 {
 public:
     FileModelSources(const QString &dirPath, QObject *parent = nullptr);
-    QList<QFileInfo> getFilePaths() const;
+    QList<QFileInfo> getFileInfos() const;
+    QStringList getFilePaths() const;
 };
 
 #endif // FILEMODELSOURCES_H

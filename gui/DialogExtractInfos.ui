@@ -129,6 +129,23 @@
       </widget>
      </item>
      <item>
+      <widget class="Line" name="line">
+       <property name="orientation">
+        <enum>Qt::Orientation::Vertical</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="buttonReadGtin">
+       <property name="toolTip">
+        <string>Read GTIN codes from the GS1 result report</string>
+       </property>
+       <property name="text">
+        <string>Read codes</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer name="horizontalSpacer_2">
        <property name="orientation">
         <enum>Qt::Orientation::Horizontal</enum>

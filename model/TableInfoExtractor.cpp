@@ -281,6 +281,60 @@ Qt::ItemFlags TableInfoExtractor::flags(const QModelIndex &index) const
     return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable;
 }
 
+QStringList TableInfoExtractor::readGtin(const QString &gtinFilePath) const
+{
+    QXlsx::Document document(gtinFilePath);
+    const auto &dim = document.dimension();
+    auto sheet = document.currentSheet()->sheetName();
+    QHash<QString, int> colName_index;
+    int nCols = qMax(14, dim.lastColumn());
+    for (int i=0; i<nCols; ++i)
+    {
+        auto cell = document.cellAt(1, i+1);
+        colName_index[cell->value().toString()] = i;
+    }
+    QString colContentSKU{"SKU"};
+    Q_ASSERT(colName_index.contains(colContentSKU));
+    int indColSku = colName_index[colContentSKU];
+    QString colContentGTIN{"GTIN"};
+    Q_ASSERT(colName_index.contains(colContentGTIN));
+    int indColGtin = colName_index[colContentGTIN];
+    QHash<QString, QString> sku_gtin;
+    for (int row = 2; row<dim.lastRow(); ++row)
+    {
+        auto cellSku = document.cellAt(row + 1, indColSku + 1);
+        auto cellGtin = document.cellAt(row + 1, indColGtin + 1);
+        if (cellSku && cellGtin)
+        {
+            QString sku = cellSku->value().toString();
+            QString gtin = cellGtin->value().toString();
+            if (!gtin.startsWith("0"))
+            {
+                gtin = "0" + gtin;
+            }
+            if (!sku.isEmpty() && !gtin.isEmpty())
+            {
+                sku_gtin[sku] = gtin;
+            }
+        }
+    }
+    QStringList GTINs;
+    for (const auto &stringList : m_listOfStringList)
+    {
+        const auto &sku = stringList[IND_SKU];
+        if (!sku.startsWith("P-"))
+        {
+            GTINs << sku_gtin[sku];
+        }
+        else
+        {
+            GTINs << QString{};
+        }
+    }
+    return GTINs;
+}
+
+
 void TableInfoExtractor::clear()
 {
     if (m_listOfStringList.size() > 0)

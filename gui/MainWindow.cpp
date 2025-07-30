@@ -1,9 +1,15 @@
 #include <QSettings>
+#include <QTimer>
 #include <QMessageBox>
 #include <QFileDialog>
 
+#include "../common/workingdirectory/WorkingDirectoryManager.h"
+
 #include "model/FileModelSources.h"
 #include "model/FileModelToFill.h"
+#include "model/TemplateMergerFiller.h"
+#include "model/ExceptionTemplateError.h"
+
 #include "DialogExtractInfos.h"
 
 #include "MainWindow.h"
@@ -15,6 +21,13 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     ui->buttonGenerate->setEnabled(false);
+    ui->buttonExtractProductInfos->setEnabled(false);
+    m_settingsKeyExtraInfos = "MainWindowExtraInfos";
+    auto settings = WorkingDirectoryManager::instance()->settings();
+    if (settings->contains(m_settingsKeyExtraInfos))
+    {
+        ui->textEditExtraInfos->setText(settings->value(m_settingsKeyExtraInfos).toString());
+    }
     _connectslots();
 }
 
@@ -54,6 +67,7 @@ void MainWindow::browseSourceMain()
         QFileDialog::DontUseNativeDialog);
     if (!filePath.isEmpty())
     {
+        ui->buttonExtractProductInfos->setEnabled(true);
         m_workingDir = QFileInfo{filePath}.dir();
         const auto &workingDirPath = m_workingDir.path();
         settings.setValue(key, workingDirPath);
@@ -94,21 +108,52 @@ void MainWindow::_connectslots()
             &QPushButton::clicked,
             this,
             &MainWindow::extractProductInfos);
+    connect(ui->textEditExtraInfos,
+            &QTextEdit::textChanged,
+            this,
+            [this](){
+                static QDateTime nextDateTime = QDateTime::currentDateTime().addSecs(-1);
+                const QDateTime &currentDateTime = QDateTime::currentDateTime();
+                if (nextDateTime.secsTo(currentDateTime) > 0)
+                {
+                    int nSecs = 3;
+                    nextDateTime = currentDateTime.addSecs(nSecs);
+                    QTimer::singleShot(nSecs * 1000 + 20, this, [this]{
+                        auto settings = WorkingDirectoryManager::instance()->settings();
+                        settings->setValue(m_settingsKeyExtraInfos,
+                                           ui->textEditExtraInfos->toPlainText());
+                    });
+                }
+            });
 }
 
 void MainWindow::generate()
 {
+    TemplateMergerFiller templateMergerFiller{ui->lineEditTo->text()};
+    try
+    {
+        templateMergerFiller.fillExcelFiles(
+            getFileModelSources()->getFilePaths()
+            , getFileModelToFill()->getFilePaths());
+    }
+    catch (const ExceptionTemplateError &exception)
+    {
+        QMessageBox::warning(this,
+                             exception.title(),
+                             exception.error());
+    }
+
     /*
     const auto &fromFilePaths = filePathsFrom();
     //TOTO create a class that will help
-    TemplateMerger templateMerger{
+    TemplateMergerFiller TemplateMergerFiller{
         fromFilePaths,
         ui->lineEditTo->text()
     };
     QFileInfo fileInfoTo(ui->lineEditTo->text());
     const auto &fileNameTo = fileInfoTo.baseName() + "-FILLED.xlsx";
     const auto &filePathTo = QDir{fileInfoTo.path()}.absoluteFilePath(fileNameTo);
-    templateMerger.exportTo(filePathTo);
+    TemplateMergerFiller.exportTo(filePathTo);
 //*/
 }
 

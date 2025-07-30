@@ -14,7 +14,7 @@
    <string>Amazon Template</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_3">
+   <layout class="QVBoxLayout" name="verticalLayout_4">
     <item>
      <widget class="QSplitter" name="splitter">
       <property name="orientation">
@@ -67,6 +67,20 @@
        <attribute name="headerDefaultSectionSize">
         <number>200</number>
        </attribute>
+      </widget>
+      <widget class="QWidget" name="">
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Extra ChatGpt instructions</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QTextEdit" name="textEditExtraInfos"/>
+        </item>
+       </layout>
       </widget>
       <widget class="QWidget" name="layoutWidget">
        <layout class="QVBoxLayout" name="verticalLayout_2">

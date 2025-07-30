@@ -8,7 +8,20 @@ FileModelSources::FileModelSources(const QString &dirPath, QObject *parent)
     setNameFilterDisables(false);
 }
 
-QList<QFileInfo> FileModelSources::getFilePaths() const
+QList<QFileInfo> FileModelSources::getFileInfos() const
 {
     return rootDirectory().entryInfoList(nameFilters(), QDir::Files);
 }
+
+QStringList FileModelSources::getFilePaths() const
+{
+    QStringList filePaths;
+    const auto &fileInfos = getFileInfos();
+    for (const auto &fileInfo : fileInfos)
+    {
+        filePaths << fileInfo.absoluteFilePath();
+    }
+    return filePaths;
+}
+
+

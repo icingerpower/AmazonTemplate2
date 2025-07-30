@@ -27,13 +27,14 @@ public:
 
 public slots:
     void browseSourceMain();
-    void generate();
     void extractProductInfos();
+    void generate();
 
 private:
     Ui::MainWindow *ui;
     void _connectslots();
     QString m_settingsFilePath;
     QDir m_workingDir;
+    QString m_settingsKeyExtraInfos;
 };
 #endif // MAINWINDOW_H

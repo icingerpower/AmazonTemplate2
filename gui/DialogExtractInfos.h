@@ -25,6 +25,7 @@ public slots:
     void copyColumn();
     void pasteSkus();
     void pasteTitles();
+    void readGtinCodes();
 
 private:
     Ui::DialogExtractInfos *ui;

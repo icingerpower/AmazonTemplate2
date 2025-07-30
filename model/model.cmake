@@ -1,12 +1,14 @@
 SET(MODEL_FILES
     ${CMAKE_CURRENT_LIST_DIR}/ColMapping.h
     ${CMAKE_CURRENT_LIST_DIR}/ColMapping.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/TemplateMerger.h
-    ${CMAKE_CURRENT_LIST_DIR}/TemplateMerger.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/TemplateMergerFiller.h
+    ${CMAKE_CURRENT_LIST_DIR}/TemplateMergerFiller.cpp
     ${CMAKE_CURRENT_LIST_DIR}/FileModelSources.h
     ${CMAKE_CURRENT_LIST_DIR}/FileModelSources.cpp
     ${CMAKE_CURRENT_LIST_DIR}/FileModelToFill.h
     ${CMAKE_CURRENT_LIST_DIR}/FileModelToFill.cpp
     ${CMAKE_CURRENT_LIST_DIR}/TableInfoExtractor.h
     ${CMAKE_CURRENT_LIST_DIR}/TableInfoExtractor.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/ExceptionTemplateError.h
+    ${CMAKE_CURRENT_LIST_DIR}/ExceptionTemplateError.cpp
 )
