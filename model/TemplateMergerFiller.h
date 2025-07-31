@@ -36,6 +36,7 @@ public:
                                    Age age_range_description,
                                    const QVariant &origValue)> FuncFiller;
     static const QHash<QString, FuncFiller> FIELD_IDS_FILLER_NO_SOURCES;
+    static const QSet<QString> FIELD_IDS_NO_SOURCES;
     static const QHash<QString, FuncFiller> FIELD_IDS_FILLER;
     struct CopyStrategy{
         QSet<QString> otherFieldId;
@@ -52,9 +53,10 @@ public:
     // We will use QSettings for crash retake
 
 private:
-    void readSkus(const QString &countryCode,
+    void readSkus(QXlsx::Document &document, const QString &countryCode,
                   QStringList &skus,
-                  QHash<QString, QHash<QString, QHash<QString, QVariant>>> &sku_countryCode_fieldId_origValue);
+                  QHash<QString, QHash<QString, QHash<QString, QVariant>>> &sku_countryCode_fieldId_origValue,
+                  bool isMainFile = false);
     void setFilePathsToFill(const QString &keywordFilePath, const QStringList &toFillFilePaths);
     void readInfoSources(const QStringList &sourceFilePaths);
     void fillDataAutomatically();
@@ -63,6 +65,7 @@ private:
 
     void _readKeywords(const QString &filePath);
     QString _getCountryCode(const QString &templateFilePath) const;
+    QString _getLangCode(const QString &templateFilePath) const;
     void _selectTemplateSheet(QXlsx::Document &doc);
     void _selectMandatorySheet(QXlsx::Document &doc);
     void _selectValidValuesSheet(QXlsx::Document &doc);

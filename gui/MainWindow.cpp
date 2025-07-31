@@ -159,19 +159,6 @@ void MainWindow::generate()
                              exception.title(),
                              exception.error());
     }
-
-    /*
-    const auto &fromFilePaths = filePathsFrom();
-    //TOTO create a class that will help
-    TemplateMergerFiller TemplateMergerFiller{
-        fromFilePaths,
-        ui->lineEditTo->text()
-    };
-    QFileInfo fileInfoTo(ui->lineEditTo->text());
-    const auto &fileNameTo = fileInfoTo.baseName() + "-FILLED.xlsx";
-    const auto &filePathTo = QDir{fileInfoTo.path()}.absoluteFilePath(fileNameTo);
-    TemplateMergerFiller.exportTo(filePathTo);
-//*/
 }
 
 void MainWindow::extractProductInfos()
