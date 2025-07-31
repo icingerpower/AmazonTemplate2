@@ -28,6 +28,7 @@ public:
 public slots:
     void browseSourceMain();
     void extractProductInfos();
+    void viewFormatExtraInfosGpt();
     void generate();
 
 private:

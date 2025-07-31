@@ -62,7 +62,7 @@ void MainWindow::browseSourceMain()
         this,
         tr("Template file pre-filled"),
         lastDir.path(),
-        QString{"Xlsx (*.xlsx *.XLSX *.xlsm *.XLSM)"},
+        QString{"Xlsx (*TOFILL*.xlsx *TOFILL*.XLSX *TOFILL*.xlsm *TOFILL*.XLSM)"},
         nullptr,
         QFileDialog::DontUseNativeDialog);
     if (!filePath.isEmpty())
@@ -108,6 +108,10 @@ void MainWindow::_connectslots()
             &QPushButton::clicked,
             this,
             &MainWindow::extractProductInfos);
+    connect(ui->buttonViewFormatExtraInfos,
+            &QPushButton::clicked,
+            this,
+            &MainWindow::viewFormatExtraInfosGpt);
     connect(ui->textEditExtraInfos,
             &QTextEdit::textChanged,
             this,
@@ -132,9 +136,22 @@ void MainWindow::generate()
     TemplateMergerFiller templateMergerFiller{ui->lineEditTo->text()};
     try
     {
-        templateMergerFiller.fillExcelFiles(
-            getFileModelSources()->getFilePaths()
-            , getFileModelToFill()->getFilePaths());
+        const auto &keywordsFileInfos = m_workingDir.entryInfoList(
+            QStringList{"keywor*.txt", "Keywor*.txt"}, QDir::Files, QDir::Name);
+        if (keywordsFileInfos.size() == 0)
+        {
+            QMessageBox::information(this,
+                                     tr("Keywords file missing"),
+                                     tr("The keywords.txt file is missing"));
+        }
+        else
+        {
+            const auto &keywordFilePath = keywordsFileInfos.last().absoluteFilePath();
+            templateMergerFiller.fillExcelFiles(
+                keywordFilePath,
+                getFileModelSources()->getFilePaths()
+                , getFileModelToFill()->getFilePaths());
+        }
     }
     catch (const ExceptionTemplateError &exception)
     {
@@ -161,4 +178,14 @@ void MainWindow::extractProductInfos()
 {
     DialogExtractInfos dialog{m_workingDir.path()};
     dialog.exec();
+}
+
+void MainWindow::viewFormatExtraInfosGpt()
+{
+    QMessageBox::information(
+        this,
+        tr("Format"),
+        tr("Custom instructions for every products\n"
+           "[SKUSTART1,SKUSTART2]\nCustom instructions for products that include the skus\n"
+           "[SKUSTART3,SKUSTART4]\nCustom instructions for products that include the skus"));
 }

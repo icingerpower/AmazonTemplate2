@@ -1,4 +1,5 @@
 #include <QHash>
+#include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QObject>
@@ -49,13 +50,17 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_NOT_AI{
     "feed_product_type"
     , "item_sku"
     , "brand_name"
-    , "external_product_id"
-    , "external_product_id_type"
-    , "recommended_browse_nodes"
+    //, "external_product_id"
+    //, "external_product_id_type"
     , "manufacturer"
     , "standard_price"
     , "parent_child"
     , "parent_sku"
+    , "package_length"
+    , "package_width"
+    , "package_height"
+    , "package_weight"
+    //, "generic_keywords"
 };
 
 const QSet<QString> TemplateMergerFiller::FIELD_IDS_PUT_FIRST_VALUE{
@@ -64,9 +69,84 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_PUT_FIRST_VALUE{
     , "recommended_browse_nodes"
 };
 
+TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_PRICE
+    = [](const QString &countryFrom,
+         const QString &countryTo,
+         const QHash<QString, QString> &langCode_keywords,
+         Gender,
+         Age,
+         const QVariant &origValue) -> QVariant{
+    static QHash<QString, double> country_rate{
+        {"FR", 1.}
+        , {"DE", 1.}
+        , {"IT", 1.}
+        , {"ES", 1.}
+        , {"BE", 1.}
+        , {"NL", 1.}
+        , {"IR", 1.}
+        , {"UK", 0.86}
+        , {"SE", 11.1435}
+        , {"PL", 4.2675}
+        , {"TR", 46.7776}
+        , {"COM", 1.1527}   // US (USD)
+        , {"CA", 1.5900}
+        , {"MX", 21.6193}
+        , {"JP", 170.96}
+        , {"AU", 1.7775}
+        , {"AE", 4.2333}     // via USD peg: 1.1527 * 3.6725
+    };
+    bool isNum = false;
+    double price = origValue.toDouble(&isNum);
+    if (!isNum)
+    {
+        return origValue;
+    }
+    double priceEur = price / country_rate[countryFrom];
+    return priceEur * country_rate[countryTo];
+};
+
+TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_PUT_KEYWORDS
+    = [](const QString &,
+         const QString &countryTo,
+         const QHash<QString, QString> &langCode_keywords,
+         Gender,
+         Age,
+         const QVariant &origValue) -> QVariant{
+    if (!langCode_keywords.contains(countryTo))
+    {
+        ExceptionTemplateError exception;
+        exception.setInfos(QObject::tr("Uncomplete keywords file"),
+                           QObject::tr("The keywords.txt file need to be complete for all countries"));
+        exception.raise();
+    }
+    const auto &keywords = langCode_keywords[countryTo];
+    static const QSet<QString> enCountries{"COM", "AU", "UK", "CA"};
+    if (!enCountries.contains(countryTo) && keywords.size() < 200 && langCode_keywords.contains("UK"))
+    {
+        const auto &keywordsSplited = keywords.split(" ");
+        QSet<QString> mergedKeywords{keywordsSplited.begin(), keywordsSplited.end()};
+        int curSize = keywords.size();
+        const auto &keywordsSplitedUk = langCode_keywords["UK"].split(" ");
+        for (const auto &enKeyword : keywordsSplitedUk)
+        {
+            if (curSize + enKeyword.size() > 235)
+            {
+                break;
+            }
+            mergedKeywords.insert(enKeyword);
+            curSize += enKeyword.size();
+        }
+        QStringList mergedKeywordsSorted{mergedKeywords.begin(), mergedKeywords.end()};
+        std::sort(mergedKeywordsSorted.begin(), mergedKeywordsSorted.end());
+        return mergedKeywordsSorted.join(" ");
+    }
+    return keywords;
+};
+
 TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_COPY
     = [](const QString &,
          const QString &,
+         const QHash<QString, QString> &,
          Gender,
          Age,
          const QVariant &origValue) -> QVariant{
@@ -76,6 +156,7 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_COPY
 TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_CLOTHE_SIZE
     = [](const QString &countryFrom,
          const QString &countryTo,
+         const QHash<QString, QString> &,
          Gender targetGender,
          Age age_range_description,
          const QVariant &origValue) -> QVariant{
@@ -179,6 +260,7 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_CLOTH
 TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_SHOE_SIZE
     = [](const QString &countryFrom,
          const QString &countryTo,
+         const QHash<QString, QString> &,
          Gender targetGender,
          Age age_range_description,
          const QVariant &origValue) -> QVariant{
@@ -335,6 +417,10 @@ const QHash<QString, TemplateMergerFiller::FuncFiller> TemplateMergerFiller::FIE
     , {"package_width", FUNC_FILLER_COPY}
     , {"package_height", FUNC_FILLER_COPY}
     , {"package_weight", FUNC_FILLER_COPY}
+    , {"size_name", FUNC_FILLER_COPY}
+    , {"generic_keywords", FUNC_FILLER_PUT_KEYWORDS}
+    , {"standard_price", FUNC_FILLER_PRICE}
+    , {"list_price_with_tax", FUNC_FILLER_PRICE}
 };
 
 const QHash<QString, QSet<QString>> TemplateMergerFiller::FIELD_IDS_COPY_FROM_OTHER
@@ -365,9 +451,11 @@ TemplateMergerFiller::TemplateMergerFiller(const QString &filePathFrom)
 }
 
 void TemplateMergerFiller::fillExcelFiles(
-    const QStringList &sourceFilePaths, const QStringList &toFillFilePaths)
+    const QString &keywordFilePath,
+    const QStringList &sourceFilePaths,
+    const QStringList &toFillFilePaths)
 {
-    setFilePathsToFill(toFillFilePaths);
+    setFilePathsToFill(keywordFilePath, toFillFilePaths);
     if (!sourceFilePaths.isEmpty())
     {
         readInfoSources(sourceFilePaths);
@@ -492,27 +580,37 @@ void TemplateMergerFiller::readSkus(
                                            QString::number(valid1),
                                            QString::number(valid2))
                                    );
+                exception.raise();
             }
         }
     }
 }
 
-void TemplateMergerFiller::setFilePathsToFill(
-    const QStringList &toFillFilePaths)
+void TemplateMergerFiller::setFilePathsToFill(const QString &keywordFilePath,
+                                              const QStringList &toFillFilePaths)
 {
     m_toFillFilePaths = toFillFilePaths;
     m_countryCode_fieldIdMandatory.clear();
     m_countryCode_fieldName_fieldId.clear();
     m_sku_countryCode_fieldId_origValue.clear();
     m_skus.clear();
+    _readKeywords(keywordFilePath);
+
+    const auto &countryCodeFrom = _getCountryCode(m_filePathFrom);
+    QStringList toFillFilePathsSorted{toFillFilePaths.begin(), toFillFilePaths.end()};
+    std::sort(toFillFilePathsSorted.begin(), toFillFilePathsSorted.end());
+    toFillFilePathsSorted.insert(0, toFillFilePathsSorted.takeAt(toFillFilePathsSorted.indexOf(m_filePathFrom)));
     for (const auto &toFillFilePath : toFillFilePaths)
     {
-        const auto &countryCode = _getCountryCode(toFillFilePath);
+        const auto &countryCodeTo = _getCountryCode(toFillFilePath);
+        if (countryCodeTo == countryCodeFrom)
+        {
+            readSkus(countryCodeFrom, m_skus, m_sku_countryCode_fieldId_origValue);
+        }
         QXlsx::Document document(toFillFilePath);
-        readSkus(countryCode, m_skus, m_sku_countryCode_fieldId_origValue);
-        _readFields(document, countryCode);
-        _readMandatory(document, countryCode);
-        _readValidValues(document, countryCode);
+        _readFields(document, countryCodeTo);
+        _readMandatory(document, countryCodeTo);
+        _readValidValues(document, countryCodeTo);
         _preFillChildOny();
     }
 }
@@ -580,7 +678,7 @@ void TemplateMergerFiller::fillDataAutomatically()
                         {
                             const auto &filler = FIELD_IDS_FILLER_NO_SOURCES[fieldId];
                             m_sku_countryCode_fieldId_value[sku][countryCodeTo][fieldId]
-                                = filler(countryCodeFrom, countryCodeTo, m_gender, m_age, origValue);
+                                = filler(countryCodeFrom, countryCodeTo, m_langCode_keywords, m_gender, m_age, origValue);
                         }
                         else if (FIELD_IDS_PUT_FIRST_VALUE.contains(fieldId))
                         {
@@ -594,7 +692,7 @@ void TemplateMergerFiller::fillDataAutomatically()
                             {
                                 const auto &filler = FIELD_IDS_FILLER[fieldId];
                                 m_sku_countryCode_fieldId_value[sku][countryCodeTo][fieldId]
-                                    = filler(countryCodeFrom, countryCodeTo, m_gender, m_age, origValue);
+                                    = filler(countryCodeFrom, countryCodeTo, m_langCode_keywords, m_gender, m_age, origValue);
                             }
                         }
                     }
@@ -630,7 +728,7 @@ void TemplateMergerFiller::fillDataAutomatically()
                                         QVariant origValue = m_sku_countryCode_fieldId_origValue[sku][countryCodeFrom][fieldId];
                                         const auto &filler = FIELD_IDS_FILLER_NO_SOURCES[otherFieldId];
                                         m_sku_countryCode_fieldId_value[sku][countryCodeTo][fieldId]
-                                            = filler(countryCodeFrom, countryCodeTo, m_gender, m_age, origValue);
+                                            = filler(countryCodeFrom, countryCodeTo, m_langCode_keywords, m_gender, m_age, origValue);
                                     }
                                 }
                             }
@@ -644,7 +742,7 @@ void TemplateMergerFiller::fillDataAutomatically()
 
 void TemplateMergerFiller::fillDataLeftChatGpt()
 {
-    // Product is new, without any batterie, as shown on the image, from china and with french metric system
+    // Product is new, without any batterie, as shown on the image, from china. We use international metric system. Inventory is Year round replenishable
 }
 
 void TemplateMergerFiller::createToFillXlsx()
@@ -678,6 +776,25 @@ void TemplateMergerFiller::createToFillXlsx()
         {
             document.saveAs(toFillFilePathNew);
         }
+    }
+}
+
+void TemplateMergerFiller::_readKeywords(const QString &filePath)
+{
+    QFile file{filePath};
+    if (file.open(QFile::ReadOnly))
+    {
+        QTextStream stream{&file};
+        auto lines = stream.readAll().split("\n");
+        for (int i=0; i<lines.size(); ++i)
+        {
+            if (lines[i].startsWith("[") && lines[i].endsWith("]") && i+1<lines.size())
+            {
+                const auto &langCode = lines[i].mid(1, lines[i].size()-2);
+                m_langCode_keywords[langCode] = lines[i+1];
+            }
+        }
+        file.close();
     }
 }
 
@@ -729,10 +846,17 @@ void TemplateMergerFiller::_readMandatory(
             QString mandatory{cellMandatory->value().toString()};
             if (cellFieldName && cellMandatory && fieldName != mandatory)
             {
-                if (VALUES_MANDATORY.contains(mandatory))
+                Q_ASSERT(m_countryCode_fieldName_fieldId[countryCode].contains(fieldName));
+                const auto &fieldId = m_countryCode_fieldName_fieldId[countryCode][fieldName];
+
+                if (VALUES_MANDATORY.contains(mandatory)
+                    || FIELD_IDS_FILLER.contains(fieldId)
+                    || FIELD_IDS_COPY_FROM_OTHER.contains(fieldId)
+                    || FIELD_IDS_NOT_AI.contains(fieldId)
+                    || FIELD_IDS_PUT_FIRST_VALUE.contains(fieldId)
+                    || FIELD_IDS_FILLER_NO_SOURCES.contains(fieldId)
+                    )
                 {
-                    Q_ASSERT(m_countryCode_fieldName_fieldId[countryCode].contains(fieldName));
-                    const auto &fieldId = m_countryCode_fieldName_fieldId[countryCode][fieldName];
                     m_countryCode_fieldIdMandatory[countryCode].insert(fieldId);
                 }
             }
@@ -942,7 +1066,8 @@ QHash<QString, int> TemplateMergerFiller::_get_fieldId_index(
 {
     const auto &dim = doc.dimension();
     QHash<QString, int> colId_index;
-    for (int i=0; i<dim.lastColumn(); ++i)
+    int lastColumn = dim.lastColumn();
+    for (int i=0; i<lastColumn; ++i)
     {
         auto cell = doc.cellAt(3, i+1);
         if (cell)

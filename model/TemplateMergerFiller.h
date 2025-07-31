@@ -30,7 +30,8 @@ public:
     };
 
     typedef std::function<QVariant(const QString &countryFrom,
-                                   const QString &countryTo, // TODO add gender + age_range_description + management of EU-46=CN-47
+                                   const QString &countryTo,
+                                   const QHash<QString, QString> &langCode_keywords,
                                    Gender targetGender,
                                    Age age_range_description,
                                    const QVariant &origValue)> FuncFiller;
@@ -43,7 +44,9 @@ public:
     static const QHash<QString, QSet<QString>> FIELD_IDS_COPY_FROM_OTHER;
     TemplateMergerFiller(
         const QString &filePathFrom);
-    void fillExcelFiles(const QStringList &sourceFilePaths, const QStringList &toFillFilePaths);
+    void fillExcelFiles(const QString &keywordFilePath,
+                        const QStringList &sourceFilePaths,
+                        const QStringList &toFillFilePaths);
     // ChatGpt, for each field mandatory, will say if needed for child only or both
     // ChatGpt, will be asked value, for each lang
     // We will use QSettings for crash retake
@@ -52,12 +55,13 @@ private:
     void readSkus(const QString &countryCode,
                   QStringList &skus,
                   QHash<QString, QHash<QString, QHash<QString, QVariant>>> &sku_countryCode_fieldId_origValue);
-    void setFilePathsToFill(const QStringList &toFillFilePaths);
+    void setFilePathsToFill(const QString &keywordFilePath, const QStringList &toFillFilePaths);
     void readInfoSources(const QStringList &sourceFilePaths);
     void fillDataAutomatically();
     void fillDataLeftChatGpt();
     void createToFillXlsx();
 
+    void _readKeywords(const QString &filePath);
     QString _getCountryCode(const QString &templateFilePath) const;
     void _selectTemplateSheet(QXlsx::Document &doc);
     void _selectMandatorySheet(QXlsx::Document &doc);
@@ -71,6 +75,7 @@ private:
     QString m_filePathFrom;
     QStringList m_toFillFilePaths;
     QStringList m_skus;
+    QHash<QString, QString> m_langCode_keywords;
 
     QHash<QString, QHash<QString, QString>> m_countryCode_fieldName_fieldId;
     QHash<QString, QSet<QString>> m_countryCode_fieldIdMandatory;
@@ -84,6 +89,8 @@ private:
     static FuncFiller FUNC_FILLER_COPY;
     static FuncFiller FUNC_FILLER_CONVERT_CLOTHE_SIZE;
     static FuncFiller FUNC_FILLER_CONVERT_SHOE_SIZE;
+    static FuncFiller FUNC_FILLER_PUT_KEYWORDS;
+    static FuncFiller FUNC_FILLER_PRICE;
     Gender m_gender;
     Age m_age;
 };
