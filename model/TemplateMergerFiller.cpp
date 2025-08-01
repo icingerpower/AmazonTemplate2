@@ -1,4 +1,5 @@
 #include <QHash>
+#include <QRegularExpression>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -10,7 +11,6 @@
 #include "ExceptionTemplateError.h"
 
 #include "TemplateMergerFiller.h"
-
 
 const QStringList TemplateMergerFiller::SHEETS_TEMPLATE{
         "Template"
@@ -52,7 +52,8 @@ const QHash<QString, QString> TemplateMergerFiller::SHEETS_MANDATORY{
 TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_PRICE
     = [](const QString &countryFrom,
          const QString &countryTo,
-         const QHash<QString, QString> &langCode_keywords,
+         const QString &,
+         const QHash<QString, QHash<QString, QString>> &,
          Gender,
          Age,
          const QVariant &origValue) -> QVariant{
@@ -93,25 +94,30 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_PRICE
 TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_PUT_KEYWORDS
     = [](const QString &,
          const QString &countryTo,
-         const QHash<QString, QString> &langCode_keywords,
+         const QString &langTo,
+         const QHash<QString, QHash<QString, QString>> &countryCode_langCode_keywords,
          Gender,
          Age,
          const QVariant &origValue) -> QVariant{
-    if (!langCode_keywords.contains(countryTo))
+    if (!countryCode_langCode_keywords.contains(countryTo)
+        || !countryCode_langCode_keywords[countryTo].contains(langTo))
     {
         ExceptionTemplateError exception;
         exception.setInfos(QObject::tr("Uncomplete keywords file"),
-                           QObject::tr("The keywords.txt file need to be complete for all countries inluding %1").arg(countryTo));
+                           QObject::tr("The keywords.txt file need to be complete for all countries inluding country: %1 lang: %2")
+                               .arg(countryTo, langTo));
         exception.raise();
     }
-    const auto &keywords = langCode_keywords[countryTo];
+    const auto &keywords = countryCode_langCode_keywords[countryTo][langTo];
     static const QSet<QString> enCountries{"COM", "AU", "UK", "CA"};
-    if (!enCountries.contains(countryTo) && keywords.size() < 200 && langCode_keywords.contains("UK"))
+    if (!enCountries.contains(countryTo) && keywords.size() < 200
+        && countryCode_langCode_keywords.contains("UK")
+        && countryCode_langCode_keywords["UK"].contains("EN"))
     {
         const auto &keywordsSplited = keywords.split(" ");
         QSet<QString> mergedKeywords{keywordsSplited.begin(), keywordsSplited.end()};
         int curSize = keywords.size();
-        const auto &keywordsSplitedUk = langCode_keywords["UK"].split(" ");
+        const auto &keywordsSplitedUk = countryCode_langCode_keywords["UK"]["EN"].split(" ");
         for (const auto &enKeyword : keywordsSplitedUk)
         {
             if (curSize + enKeyword.size() > 235)
@@ -131,7 +137,8 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_PUT_KEYWORDS
 TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_COPY
     = [](const QString &,
          const QString &,
-         const QHash<QString, QString> &,
+         const QString &,
+         const QHash<QString, QHash<QString, QString>> &,
          Gender,
          Age,
          const QVariant &origValue) -> QVariant{
@@ -141,7 +148,8 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_COPY
 TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_CLOTHE_SIZE
     = [](const QString &countryFrom,
          const QString &countryTo,
-         const QHash<QString, QString> &,
+         const QString &,
+         const QHash<QString, QHash<QString, QString>> &,
          Gender targetGender,
          Age age_range_description,
          const QVariant &origValue) -> QVariant{
@@ -245,7 +253,8 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_CLOTH
 TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_SHOE_SIZE
     = [](const QString &countryFrom,
          const QString &countryTo,
-         const QHash<QString, QString> &,
+         const QString &,
+         const QHash<QString, QHash<QString, QString>> &,
          Gender targetGender,
          Age age_range_description,
          const QVariant &origValue) -> QVariant{
@@ -383,62 +392,231 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_SHOE_
 
 const QSet<QString> TemplateMergerFiller::FIELD_IDS_NOT_AI{
     "feed_product_type"
+    , "product_type#1.value"
     , "item_sku"
+    , "contribution_sku#1.value"
     , "brand_name"
-    //, "external_product_id"
-    //, "external_product_id_type"
+    , "brand#1.value"
     , "manufacturer"
+    , "manufacturer#1.value"
     , "parent_child"
+    , "parentage_level#1.value"
     , "parent_sku"
+    , "child_parent_sku_relationship#1.parent_sku"
     , "package_length"
+    , "item_package_dimensions#1.length.value"
     , "package_width"
+    , "item_package_dimensions#1.width.value"
     , "package_height"
+    , "item_package_dimensions#1.height.value"
     , "package_weight"
-    //, "generic_keywords"
+    , "item_package_weight#1.value"
 };
 
 const QSet<QString> TemplateMergerFiller::FIELD_IDS_PUT_FIRST_VALUE{
     "feed_product_type"
+    , "product_type#1.value"
     , "fulfillment_center_id"
+    , "fulfillment_availability#1.fulfillment_channel_code"
     , "recommended_browse_nodes"
+    , "recommended_browse_nodes#1.value"
 };
 
 const QHash<QString, TemplateMergerFiller::FuncFiller>
     TemplateMergerFiller::FIELD_IDS_FILLER_NO_SOURCES
 {
     {"parent_child", FUNC_FILLER_COPY}
+    , {"parentage_level#1.value", FUNC_FILLER_COPY}
     , {"parent_sku", FUNC_FILLER_COPY}
+    , {"child_parent_sku_relationship#1.parent_sku", FUNC_FILLER_COPY}
     , {"relationship_type", FUNC_FILLER_COPY}
+    , {"child_parent_sku_relationship#1.child_relationship_type", FUNC_FILLER_COPY}
     , {"variation_theme", FUNC_FILLER_COPY}
+    , {"variation_theme#1.name", FUNC_FILLER_COPY}
 };
 
 const QSet<QString> TemplateMergerFiller::FIELD_IDS_NO_SOURCES{
     "standard_price"
+    , "purchasable_offer#1.our_price#1.schedule#1.value_with_tax"
+    , "list_price_with_tax"
+    , "list_price#1.value_with_tax"
 };
 
 const QHash<QString, TemplateMergerFiller::FuncFiller> TemplateMergerFiller::FIELD_IDS_FILLER
 {
     {"apparel_size", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
+    , {"apparel_size#1.size", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
     , {"apparel_size_to", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
+    , {"apparel_size#1.size_to", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
     , {"footwear_size", FUNC_FILLER_CONVERT_SHOE_SIZE}
+    , {"footwear_size#1.size", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
     , {"footwear_to_size", FUNC_FILLER_CONVERT_SHOE_SIZE}
+    , {"footwear_size#1.to_size", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
     , {"shapewear_size", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
+    , {"shapewear_size#1.size", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
     , {"shapewear_size_to", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
+    , {"shapewear_size#1.size_to", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
     , {"item_sku", FUNC_FILLER_COPY}
+    , {"contribution_sku#1.value", FUNC_FILLER_COPY}
+    , {"external_product_id", FUNC_FILLER_COPY}
+    , {"amzn1.volt.ca.product_id_value", FUNC_FILLER_COPY}
+    , {"external_product_type", FUNC_FILLER_COPY}
+    , {"amzn1.volt.ca.product_id_type", FUNC_FILLER_COPY}
     , {"package_length", FUNC_FILLER_COPY}
+    , {"item_package_dimensions#1.length.value", FUNC_FILLER_COPY}
     , {"package_width", FUNC_FILLER_COPY}
+    , {"item_package_dimensions#1.width.value", FUNC_FILLER_COPY}
     , {"package_height", FUNC_FILLER_COPY}
+    , {"item_package_dimensions#1.height.value", FUNC_FILLER_COPY}
     , {"package_weight", FUNC_FILLER_COPY}
+    , {"item_package_weight#1.value", FUNC_FILLER_COPY}
     , {"size_name", FUNC_FILLER_COPY}
     , {"generic_keywords", FUNC_FILLER_PUT_KEYWORDS}
+    , {"generic_keyword#1.value", FUNC_FILLER_PUT_KEYWORDS}
     , {"standard_price", FUNC_FILLER_PRICE}
+    , {"purchasable_offer#1.our_price#1.schedule#1.value_with_tax", FUNC_FILLER_PRICE}
     , {"list_price_with_tax", FUNC_FILLER_PRICE}
+    , {"list_price#1.value_with_tax", FUNC_FILLER_PRICE}
 };
 
 const QHash<QString, QSet<QString>> TemplateMergerFiller::FIELD_IDS_COPY_FROM_OTHER
     {
         {"size_map", {"apparel_size", "footwear_size", "shapewear_size"}}
 };
+
+void TemplateMergerFiller::_recordValueAllVersion(
+    QHash<QString, QVariant> &fieldId_value, const QString fieldId, const QVariant &value)
+{
+    static QHash<QString, QString> mappingFieldId
+        = []() -> QHash<QString, QString>{
+        QHash<QString, QString> _mappingFieldIdTemp{
+                                                {"feed_product_type", "product_type#1.value"}
+                                                , {"item_sku", "contribution_sku#1.value"}
+                                                , {"brand_name", "brand#1.value"}
+                                                , {"manufacturer", "manufacturer#1.value"}
+                                                , {"parent_child", "parentage_level#1.value"}
+                                                , {"parent_sku", "child_parent_sku_relationship#1.parent_sku"}
+                                                , {"package_length", "item_package_dimensions#1.length.value"}
+                                                , {"package_width", "item_package_dimensions#1.width.value"}
+                                                , {"package_height", "item_package_dimensions#1.height.value"}
+                                                , {"package_weight", "item_package_weight#1.value"}
+                                                , {"standard_price", "purchasable_offer#1.our_price#1.schedule#1.value_with_tax"}
+                                                , {"list_price_with_tax", "list_price#1.value_with_tax"}
+                                                , {"generic_keywords", "generic_keyword#1.value"}
+                                                , {"external_product_id", "amzn1.volt.ca.product_id_value"}
+                                                , {"external_product_type", "amzn1.volt.ca.product_id_type"}
+                                                , {"apparel_size", "apparel_size#1.size"}
+                                                , {"apparel_size_to", "apparel_size#1.size_to"}
+                                                , {"footwear_size", "footwear_size#1.size"}
+                                                , {"footwear_to_size", "footwear_size#1.to_size"}
+                                                , {"shapewear_size", "shapewear_size#1.size"}
+                                                , {"shapewear_size_to", "shapewear_size#1.size_to"}
+                                                , {"relationship_type", "child_parent_sku_relationship#1.child_relationship_type"}
+                                                , {"variation_theme", "variation_theme#1.name"}
+        };
+        QHash<QString, QString> _mappingFieldId = _mappingFieldIdTemp;
+        for (auto it = _mappingFieldIdTemp.begin();
+             it != _mappingFieldIdTemp.end(); ++it)
+        {
+            _mappingFieldId[it.value()] = it.key();
+        }
+        return _mappingFieldId;
+    }();
+    fieldId_value[fieldId] = value;
+    fieldId_value[mappingFieldId[fieldId]] = value;
+}
+
+void TemplateMergerFiller::_preFillChildOny()
+{
+    static QSet<QString> fieldIdsChildOnly{"apparel_size_class"
+                                           , "apparel_size#1.size_class"
+                                           , "apparel_size_system"
+                                           , "apparel_size#1.size_system"
+                                           , "apparel_size"
+                                           , "apparel_size#1.size"
+                                           , "apparel_size_to"
+                                           , "apparel_size#1.size_to"
+                                           , "apparel_body_type"
+                                           , "apparel_size#1.body_type"
+                                           , "apparel_height_type"
+                                           , "apparel_size#1.height_type"
+                                           , "size_map"
+                                           , "fulfillment_center_id"
+                                           , "fulfillment_availability#1.fulfillment_channel_code"
+                                           , "package_length"
+                                           , "item_package_dimensions#1.length.value"
+                                           , "package_width"
+                                           , "item_package_dimensions#1.width.value"
+                                           , "package_height"
+                                           , "item_package_dimensions#1.height.value"
+                                           , "package_length_unit_of_measure"
+                                           , "item_package_dimensions#1.length.unit"
+                                           , "package_weight"
+                                           , "item_package_weight#1.value"
+                                           , "package_weight_unit_of_measure"
+                                           , "item_package_weight#1.unit"
+                                           , "package_height_unit_of_measure"
+                                           , "item_package_dimensions#1.height.unit"
+                                           , "package_width_unit_of_measure"
+                                           , "item_package_dimensions#1.width.unit"
+                                           , "batteries_required"
+                                           , "supplier_declared_dg_hz_regulation1"
+                                           , "condition_type"
+                                           , "condition_type#1.value"
+                                           , "currency"
+                                           , "list_price_with_tax"
+                                           , "list_price#1.value_with_tax"
+                                           , "heel_height"
+                                           , "heel#1.height#1.decimal_value"
+                                           , "footwear_size_system"
+                                           , "footwear_size#1.size_system"
+                                           , "footwear_age_group"
+                                           , "footwear_size#1.age_group"
+                                           , "footwear_gender"
+                                           , "footwear_size#1.gender"
+                                           , "footwear_size_class"
+                                           , "footwear_size#1.size_class"
+                                           , "footwear_width"
+                                           , "footwear_size#1.width"
+                                           , "footwear_size"
+                                           , "footwear_size#1.size"
+                                           , "footwear_to_size"
+                                           , "footwear_size#1.to_size"
+                                           , "target_gender"
+                                           , "target_gender#1.value"
+                                           , "age_range_description"
+                                           , "age_range_description#1.value"
+                                           , "shapewear_size_system"
+                                           , "shapewear_size#1.size_system"
+                                           , "shapewear_size_class"
+                                           , "shapewear_size#1.size_class"
+                                           , "shapewear_size"
+                                           , "shapewear_size#1.size"
+                                           , "shapewear_size_to"
+                                           , "shapewear_size#1.size_to"
+                                           , "shapewear_body_type"
+                                           , "shapewear_size#1.body_type"
+                                           , "shapewear_height_type"
+                                           , "shapewear_size#1.height_type"
+    };
+    for (auto itCountry = m_countryCode_langCode_fieldIdMandatory.begin();
+         itCountry != m_countryCode_langCode_fieldIdMandatory.end(); ++itCountry)
+    {
+        for (auto itLangCode = itCountry.value().begin();
+             itLangCode != itCountry.value().end(); ++itLangCode)
+        {
+            const auto &fieldIds = itLangCode.value();
+            for (const auto &fieldId : fieldIds)
+            {
+                if (fieldIdsChildOnly.contains(fieldId))
+                {
+                    m_countryCode_langCode_fieldIdChildOnly[itCountry.key()][itLangCode.key()].insert(fieldId);
+                }
+            }
+        }
+    }
+}
+
 
 
 const QSet<QString> TemplateMergerFiller::VALUES_MANDATORY
@@ -452,9 +630,6 @@ const QSet<QString> TemplateMergerFiller::VALUES_MANDATORY
     }
     return values;
 }();
-
-const QString TemplateMergerFiller::ID_SKU{"item_sku"};
-const QString TemplateMergerFiller::ID_SKU_PARENT{"parent_sku"};
 
 TemplateMergerFiller::TemplateMergerFiller(const QString &filePathFrom)
 {
@@ -478,6 +653,27 @@ void TemplateMergerFiller::fillExcelFiles(
     createToFillXlsx();
 }
 
+TemplateMergerFiller::Version TemplateMergerFiller::_getDocumentVersion(
+    QXlsx::Document &document) const
+{
+    _selectTemplateSheet(document);
+    auto firstCell = document.cellAt(1, 1);
+    if (firstCell)
+    {
+        const QString version{firstCell->value().toString()};
+        if (version.startsWith("settings", Qt::CaseInsensitive))
+        {
+            return V02;
+        }
+        else
+        {
+            return V01;
+        }
+    }
+    Q_ASSERT(false);
+    return V01;
+}
+
 void TemplateMergerFiller::readSkus(QXlsx::Document &document,
                                     const QString &countryCode,
                                     const QString &langCode,
@@ -488,10 +684,8 @@ void TemplateMergerFiller::readSkus(QXlsx::Document &document,
 {
     _selectTemplateSheet(document);
     const auto &fieldId_index = _get_fieldId_index(document);
-    Q_ASSERT(fieldId_index.contains(ID_SKU));
-    int indColSku = fieldId_index[ID_SKU];
-    Q_ASSERT(fieldId_index.contains(ID_SKU_PARENT));
-    int indColSkuParent = fieldId_index[ID_SKU_PARENT];
+    int indColSku = _getIdSku(fieldId_index);
+    int indColSkuParent = _getIdSkuParent(fieldId_index);
     const auto &dim = document.dimension();
     QHash<QString, qsizetype> fieldId_count;
     int nParents = 0;
@@ -527,72 +721,73 @@ void TemplateMergerFiller::readSkus(QXlsx::Document &document,
         {
             const auto &fieldId = it.key();
             int indCol = it.value();
-            if (indCol != indColSku)
+            auto cell = document.cellAt(i+1, indCol + 1);
+            if (cell)
             {
-                auto cell = document.cellAt(i+1, it.value() + 1);
-                if (cell)
+                const auto &valueVariant = cell->value();
+                QString valueString{valueVariant.toString()};
+                if (isMainFile)
                 {
-                    const auto &valueVariant = cell->value();
-                    QString valueString{valueVariant.toString()};
-                    if (isMainFile)
+                    if (fieldId == "target_gender"
+                        || fieldId == "target_gender#1.value")
                     {
-                        if (fieldId == "target_gender")
+                        static QSet<QString> women{"Féminin", "Female"};
+                        static QSet<QString> men{"Masculin", "Male"};
+                        static QSet<QString> unisex{"Unisexe"};
+                        if (women.contains(valueString))
                         {
-                            static QSet<QString> women{"Féminin", "Female"};
-                            static QSet<QString> men{"Masculin", "Male"};
-                            static QSet<QString> unisex{"Unisexe"};
-                            if (women.contains(valueString))
-                            {
-                                m_gender = Gender::Female;
-                            }
-                            else if (men.contains(valueString))
-                            {
-                                m_gender = Gender::Male;
-                            }
-                            else if (unisex.contains(valueString))
-                            {
-                                m_gender = Gender::Unisex;
-                            }
-                            else if (!valueString.isEmpty())
-                            {
-                                Q_ASSERT(false);
-                            }
+                            m_gender = Gender::Female;
                         }
-                        else if (fieldId == "age_range_description")
+                        else if (men.contains(valueString))
                         {
-                            static QSet<QString> adult{"Adult", "Adulte"};
-                            static QSet<QString> kid{"Enfant", "Big Kid"};
-                            static QSet<QString> baby{"Infant", "Toddler", "Little Kid", "Nourisson", "Tout-petit"};
-                            if (adult.contains(valueString))
-                            {
-                                m_age = Age::Adult;
-                            }
-                            else if (kid.contains(valueString))
-                            {
-                                m_age = Age::kid;
-                            }
-                            else if (baby.contains(valueString))
-                            {
-                                m_age = Age::baby;
-                            }
-                            else if (!valueString.isEmpty())
-                            {
-                                Q_ASSERT(false);
-                            }
+                            m_gender = Gender::Male;
+                        }
+                        else if (unisex.contains(valueString))
+                        {
+                            m_gender = Gender::Unisex;
+                        }
+                        else if (!valueString.isEmpty())
+                        {
+                            Q_ASSERT(false);
                         }
                     }
-                    if (!valueString.isEmpty())
+                    else if (fieldId == "age_range_description"
+                               || fieldId == "age_range_description#1.value")
                     {
-                        ++fieldId_count[fieldId];
-                        sku_countryCode_langCode_fieldId_origValue[sku][countryCode][langCode][fieldId] = valueVariant;
+                        static QSet<QString> adult{"Adult", "Adulte"};
+                        static QSet<QString> kid{"Enfant", "Big Kid"};
+                        static QSet<QString> baby{"Infant", "Toddler", "Little Kid", "Nourisson", "Tout-petit"};
+                        if (adult.contains(valueString))
+                        {
+                            m_age = Age::Adult;
+                        }
+                        else if (kid.contains(valueString))
+                        {
+                            m_age = Age::kid;
+                        }
+                        else if (baby.contains(valueString))
+                        {
+                            m_age = Age::baby;
+                        }
+                        else if (!valueString.isEmpty())
+                        {
+                            Q_ASSERT(false);
+                        }
                     }
+                }
+                if (!valueString.isEmpty())
+                {
+                    ++fieldId_count[fieldId];
+                    _recordValueAllVersion(sku_countryCode_langCode_fieldId_origValue[sku][countryCode][langCode],
+                                           fieldId,
+                                           valueVariant);
+                    //sku_countryCode_langCode_fieldId_origValue[sku][countryCode][langCode][fieldId] = valueVariant;
                 }
             }
         }
     }
     if (isMainFile)
     {
-        fieldId_count[ID_SKU] = m_skus.size();
         auto valid1 = skus.size();
         auto valid2 = skus.size()-nParents;
         const QSet<qsizetype> validCounts{valid1, valid2};
@@ -687,7 +882,10 @@ void TemplateMergerFiller::readInfoSources(const QStringList &sourceFilePaths)
                         {
                             if (!_isSkuParent(sku) || !m_countryCode_langCode_fieldIdChildOnly[countryCode][langCode].contains(fieldId))
                             {
-                                m_sku_countryCode_langCode_fieldId_value[sku][countryCode][langCode][fieldId] = itFieldId_value.value();
+                                _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCode][langCode],
+                                                       fieldId,
+                                                       itFieldId_value.value());
+                                //m_sku_countryCode_langCode_fieldId_value[sku][countryCode][langCode][fieldId] = itFieldId_value.value();
                             }
                         }
                     }
@@ -700,7 +898,6 @@ void TemplateMergerFiller::readInfoSources(const QStringList &sourceFilePaths)
 void TemplateMergerFiller::fillDataAutomatically()
 {
     //m_sku_countryCode_fieldId_value;
-    int row = 3;
     const auto &countryCodeFrom = _getCountryCode(m_filePathFrom);
     const auto &langCodeFrom = _getLangCode(m_filePathFrom);
     for (const auto &toFillFilePath : m_toFillFilePaths)
@@ -731,22 +928,45 @@ void TemplateMergerFiller::fillDataAutomatically()
                             if (FIELD_IDS_FILLER_NO_SOURCES.contains(fieldId))
                             {
                                 const auto &filler = FIELD_IDS_FILLER_NO_SOURCES[fieldId];
-                                m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId]
-                                    = filler(countryCodeFrom, countryCodeTo, m_countryCode_keywords, m_gender, m_age, origValue);
+                                const auto &fillerValue = filler(countryCodeFrom,
+                                                                 countryCodeTo,
+                                                                 langCodeTo,
+                                                                 m_countryCode_langCode_keywords,
+                                                                 m_gender,
+                                                                 m_age,
+                                                                 origValue);
+                                //m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId]
+                                //= filler(countryCodeFrom, countryCodeTo, m_countryCode_langCode_keywords, m_gender, m_age, origValue);
+                                _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
+                                                       fieldId,
+                                                       fillerValue);
                             }
                             else if (FIELD_IDS_PUT_FIRST_VALUE.contains(fieldId))
                             {
                                 Q_ASSERT(m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo].contains(fieldId));
                                 const auto &validValues = m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo][fieldId];
-                                m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId] = validValues[0];
+                                //m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId] = validValues[0];
+                                _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
+                                                       fieldId,
+                                                       validValues[0]);
                             }
                             else if (!m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo].contains(fieldId))
                             {
                                 if (FIELD_IDS_FILLER.contains(fieldId))
                                 {
                                     const auto &filler = FIELD_IDS_FILLER[fieldId];
-                                    m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId]
-                                        = filler(countryCodeFrom, countryCodeTo, m_countryCode_keywords, m_gender, m_age, origValue);
+                                    const auto &fillerValue = filler(countryCodeFrom,
+                                                                     countryCodeTo,
+                                                                     langCodeTo,
+                                                                     m_countryCode_langCode_keywords,
+                                                                     m_gender,
+                                                                     m_age,
+                                                                     origValue);
+                                    //m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId]
+                                    //= filler(countryCodeFrom, countryCodeTo, m_countryCode_langCode_keywords, m_gender, m_age, origValue);
+                                    _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
+                                                           fieldId,
+                                                           fillerValue);
                                 }
                             }
                         }
@@ -766,8 +986,11 @@ void TemplateMergerFiller::fillDataAutomatically()
                         {
                             if (m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo].contains(fieldId))
                             {
-                                m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId]
-                                    = m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][otherFieldId];
+                                //m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId]
+                                //= m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][otherFieldId];
+                                _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
+                                                       fieldId,
+                                                       m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][otherFieldId]);
                                 otherFound = true;
                                 break;
                             }
@@ -784,8 +1007,16 @@ void TemplateMergerFiller::fillDataAutomatically()
                                         {
                                             QVariant origValue = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][fieldId];
                                             const auto &filler = FIELD_IDS_FILLER_NO_SOURCES[otherFieldId];
-                                            m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeTo][langCodeTo][fieldId]
-                                                = filler(countryCodeFrom, countryCodeTo, m_countryCode_keywords, m_gender, m_age, origValue);
+                                            const auto &fillerValue = filler(countryCodeFrom,
+                                                                             countryCodeTo,
+                                                                             langCodeTo,
+                                                                             m_countryCode_langCode_keywords,
+                                                                             m_gender,
+                                                                             m_age,
+                                                                             origValue);
+                                            _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeTo][langCodeTo],
+                                                                   fieldId,
+                                                                   fillerValue);
                                         }
                                     }
                                 }
@@ -810,9 +1041,24 @@ void TemplateMergerFiller::createToFillXlsx()
         const auto &countryCodeTo = _getCountryCode(toFillFilePath);
         const auto &langCodeTo = _getLangCode(toFillFilePath);
         QXlsx::Document document(toFillFilePath);
+        auto version = _getDocumentVersion(document);
         _selectTemplateSheet(document);
         const auto &fieldId_index = _get_fieldId_index(document);
-        int row = 3;
+        int row = _getRowFieldId(version) + 1;
+        if (version == V02)
+        {
+            auto dim = document.dimension();
+            for (int j=0; j<dim.columnCount(); ++j)
+            {
+                auto cell = document.cellAt(row+1, j+1);
+                if (cell)
+                {
+                    auto format = cell->format();
+                    document.write(row+1, j+1, QVariant{}, format);
+                }
+            }
+        }
+        QSet<int> allColIndexes;
         for (const auto &sku : m_skus)
         {
             const auto &fieldId_value = m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo];
@@ -823,10 +1069,15 @@ void TemplateMergerFiller::createToFillXlsx()
                 if (fieldId_index.contains(fieldId))
                 {
                     int colInd = fieldId_index[fieldId];
+                    allColIndexes << colInd;
                     document.write(row + 1, colInd + 1, it.value());
                 }
             }
             ++row;
+        }
+        for (auto colInd : qAsConst(allColIndexes))
+        {
+            document.setColumnHidden(colInd + 1, false);
         }
         QString toFillFilePathNew{toFillFilePath};
         toFillFilePathNew.replace("TOFILL", "FILLED");
@@ -849,8 +1100,19 @@ void TemplateMergerFiller::_readKeywords(const QString &filePath)
         {
             if (lines[i].startsWith("[") && lines[i].endsWith("]") && i+1<lines.size())
             {
-                const auto &langCode = lines[i].mid(1, lines[i].size()-2);
-                m_countryCode_keywords[langCode] = lines[i+1];
+                const auto &countryLangCode = lines[i].mid(1, lines[i].size()-2);
+                QString langCode = _getLangCodeFromText(countryLangCode);
+                QString countryCode;
+                if (countryLangCode.contains("_"))
+                {
+                    const auto &elements = countryLangCode.split("_");
+                    countryCode = elements[1].toUpper();
+                }
+                else
+                {
+                    countryCode = countryLangCode;
+                }
+                m_countryCode_langCode_keywords[countryCode][langCode] = lines[i+1];
             }
         }
         file.close();
@@ -862,17 +1124,24 @@ void TemplateMergerFiller::_readFields(
     const QString &countryCode,
     const QString &langCode)
 {
+    auto version = _getDocumentVersion(document);
     _selectTemplateSheet(document);
+    int rowFieldId = _getRowFieldId(version);
+    int rowFieldName = rowFieldId - 1;
     auto dimTemplate = document.dimension();
     for (int i = 0; i < dimTemplate.lastColumn(); ++i)
     {
-        auto cellFieldName = document.cellAt(2, i + 1);
-        auto cellFieldId = document.cellAt(3, i + 1);
+        auto cellFieldName = document.cellAt(rowFieldName + 1, i + 1);
+        auto cellFieldId = document.cellAt(rowFieldId + 1, i + 1);
         if (cellFieldId && cellFieldName)
         {
             QString fieldId{cellFieldId->value().toString()};
+            _formatFieldId(fieldId);
             QString fieldName{cellFieldName->value().toString()};
-            m_countryCode_langCode_fieldName_fieldId[countryCode][langCode][fieldName] = fieldId;
+            if (!m_countryCode_langCode_fieldName_fieldId[countryCode][langCode].contains(fieldName))
+            {
+                m_countryCode_langCode_fieldName_fieldId[countryCode][langCode][fieldName] = fieldId;
+            }
         }
     }
 }
@@ -885,6 +1154,7 @@ void TemplateMergerFiller::_readMandatory(
 
     _selectMandatorySheet(document);
     auto dimMandatory = document.dimension();
+    const int colIndFieldId = 1;
     const int colIndFieldName = 2;
     int colIndMandatory = 0;
     for (int j=0; j<10; ++j)
@@ -901,16 +1171,19 @@ void TemplateMergerFiller::_readMandatory(
     }
     for (int i = 3; i<dimMandatory.lastRow(); ++i)
     {
+        auto cellFieldId = document.cellAt(i+1, colIndFieldId + 1);
         auto cellFieldName = document.cellAt(i+1, colIndFieldName + 1);
         auto cellMandatory = document.cellAt(i+1, colIndMandatory + 1);
-        if (cellFieldName && cellMandatory)
+        if (cellFieldId && cellFieldName && cellMandatory)
         {
-            QString fieldName{cellFieldName->value().toString()};
+            QString fieldId{cellFieldId->value().toString()};
+            _formatFieldId(fieldId);
+            //QString fieldName{cellFieldName->value().toString()};
             QString mandatory{cellMandatory->value().toString()};
-            if (cellFieldName && cellMandatory && fieldName != mandatory)
+            if (cellFieldName && cellMandatory && fieldId != mandatory)
             {
-                Q_ASSERT(m_countryCode_langCode_fieldName_fieldId[countryCode][langCode].contains(fieldName));
-                const auto &fieldId = m_countryCode_langCode_fieldName_fieldId[countryCode][langCode][fieldName];
+                //Q_ASSERT(m_countryCode_langCode_fieldName_fieldId[countryCode][langCode].contains(fieldName));
+                //const auto &fieldId = m_countryCode_langCode_fieldName_fieldId[countryCode][langCode][fieldName];
 
                 if (VALUES_MANDATORY.contains(mandatory)
                     || FIELD_IDS_FILLER.contains(fieldId)
@@ -938,86 +1211,33 @@ void TemplateMergerFiller::_readValidValues(
         if (cellFieldName)
         {
             QString fieldName{cellFieldName->value().toString()};
-            if (fieldName.contains(" - "))
+            if (fieldName.contains(" - ["))
             {
-                fieldName = fieldName.split(" - ")[0];
+                fieldName = fieldName.split(" - [")[0];
             }
-            if (m_countryCode_langCode_fieldName_fieldId[countryCode][langCode].contains(fieldName))
+            if (!fieldName.isEmpty())
             {
-                const auto &fieldId = m_countryCode_langCode_fieldName_fieldId[countryCode][langCode][fieldName];
-                for (int j=2; i<dimValidValues.lastColumn(); ++j)
+                Q_ASSERT(m_countryCode_langCode_fieldName_fieldId[countryCode][langCode].contains(fieldName));
+                if (m_countryCode_langCode_fieldName_fieldId[countryCode][langCode].contains(fieldName))
                 {
-                    auto cellValue = document.cellAt(i+1, j+1);
-                    QString value;
-                    if (cellValue)
+                    const auto &fieldId = m_countryCode_langCode_fieldName_fieldId[countryCode][langCode][fieldName];
+                    for (int j=2; i<dimValidValues.lastColumn(); ++j)
                     {
-                        value = cellValue->value().toString();
-                        if (!value.isEmpty())
+                        auto cellValue = document.cellAt(i+1, j+1);
+                        QString value;
+                        if (cellValue)
                         {
-                            m_countryCode_langCode_fieldId_possibleValues[countryCode][langCode][fieldId] << value;
+                            value = cellValue->value().toString();
+                            if (!value.isEmpty())
+                            {
+                                m_countryCode_langCode_fieldId_possibleValues[countryCode][langCode][fieldId] << value;
+                            }
+                        }
+                        if (value.isEmpty())
+                        {
+                            break;
                         }
                     }
-                    if (value.isEmpty())
-                    {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-}
-
-void TemplateMergerFiller::_preFillChildOny()
-{
-    static QSet<QString> fieldIdsChildOnly{"apparel_size_class"
-                                           , "apparel_size"
-                                           , "apparel_size_to"
-                                           , "apparel_body_type"
-                                           , "apparel_height_type"
-                                           , "size_map"
-                                           , "fulfillment_center_id"
-                                           , "package_length"
-                                           , "package_width"
-                                           , "package_height"
-                                           , "package_length_unit_of_measure"
-                                           , "package_weight"
-                                           , "package_weight_unit_of_measure"
-                                           , "package_height_unit_of_measure"
-                                           , "package_width_unit_of_measure"
-                                           , "batteries_required"
-                                           , "supplier_declared_dg_hz_regulation1"
-                                           , "condition_type"
-                                           , "currency"
-                                           , "list_price_with_tax"
-                                           , "heel_height"
-                                           , "footwear_size_system"
-                                           , "footwear_age_group"
-                                           , "footwear_gender"
-                                           , "footwear_size_class"
-                                           , "footwear_width"
-                                           , "footwear_size"
-                                           , "footwear_to_size"
-                                           , "target_gender"
-                                           , "age_range_description"
-                                           , "shapewear_size_system"
-                                           , "shapewear_size_class"
-                                           , "shapewear_size"
-                                           , "shapewear_size_to"
-                                           , "shapewear_body_type"
-                                           , "shapewear_height_type"
-    };
-    for (auto itCountry = m_countryCode_langCode_fieldIdMandatory.begin();
-         itCountry != m_countryCode_langCode_fieldIdMandatory.end(); ++itCountry)
-    {
-        for (auto itLangCode = itCountry.value().begin();
-             itLangCode != itCountry.value().end(); ++itLangCode)
-        {
-            const auto &fieldIds = itLangCode.value();
-            for (const auto &fieldId : fieldIds)
-            {
-                if (fieldIdsChildOnly.contains(fieldId))
-                {
-                    m_countryCode_langCode_fieldIdChildOnly[itCountry.key()][itLangCode.key()].insert(fieldId);
                 }
             }
         }
@@ -1071,6 +1291,11 @@ QString TemplateMergerFiller::_getLangCode(const QString &templateFilePath) cons
         }
     }
     const auto &langInfos = elements.last();
+    return _getLangCodeFromText(langInfos);
+}
+
+QString TemplateMergerFiller::_getLangCodeFromText(const QString &langInfos) const
+{
     if (langInfos.contains("_"))
     {
         return langInfos.split("_")[0].toUpper();
@@ -1096,9 +1321,10 @@ QString TemplateMergerFiller::_getLangCode(const QString &templateFilePath) cons
         return "ES";
     }
     return langInfos;
+
 }
 
-void TemplateMergerFiller::_selectTemplateSheet(QXlsx::Document &doc)
+void TemplateMergerFiller::_selectTemplateSheet(QXlsx::Document &doc) const
 {
     bool sheetSelected = false;
     for (const QString &sheetName : SHEETS_TEMPLATE)
@@ -1126,7 +1352,7 @@ void TemplateMergerFiller::_selectTemplateSheet(QXlsx::Document &doc)
     }
 }
 
-void TemplateMergerFiller::_selectMandatorySheet(QXlsx::Document &doc)
+void TemplateMergerFiller::_selectMandatorySheet(QXlsx::Document &doc) const
 {
     bool sheetSelected = false;
     for (auto it = SHEETS_MANDATORY.begin();
@@ -1155,7 +1381,7 @@ void TemplateMergerFiller::_selectMandatorySheet(QXlsx::Document &doc)
     }
 }
 
-void TemplateMergerFiller::_selectValidValuesSheet(QXlsx::Document &doc)
+void TemplateMergerFiller::_selectValidValuesSheet(QXlsx::Document &doc) const
 {
     bool sheetSelected = false;
     for (const QString &sheetName : SHEETS_VALID_VALUES)
@@ -1185,123 +1411,83 @@ void TemplateMergerFiller::_selectValidValuesSheet(QXlsx::Document &doc)
 QHash<QString, int> TemplateMergerFiller::_get_fieldId_index(
     QXlsx::Document &doc) const
 {
+    auto version = _getDocumentVersion(doc);
+    int rowCell = _getRowFieldId(version);
     const auto &dim = doc.dimension();
     QHash<QString, int> colId_index;
     int lastColumn = dim.lastColumn();
     for (int i=0; i<lastColumn; ++i)
     {
-        auto cell = doc.cellAt(3, i+1);
+        auto cell = doc.cellAt(rowCell + 1, i + 1);
         if (cell)
         {
             QString fieldId{cell->value().toString()};
             if (!fieldId.isEmpty())
             {
-                colId_index[cell->value().toString()] = i;
+                _formatFieldId(fieldId);
+                if (!colId_index.contains(fieldId))
+                {
+                    colId_index[fieldId] = i;
+                }
             }
         }
     }
     return colId_index;
 }
 
-/*
-void TemplateMergerFiller::exportTo(const QString &filePath)
+void TemplateMergerFiller::_formatFieldId(QString &fieldId) const
 {
-    struct FromInfo{
-        QStringList colNames; //Each col names of the third row from the template sheet
-        QHash<QString, int> nameToIndex; // Col name indexes
-        QList<QStringList> lines; //Each celle value of each line
-    };
-    QList<FromInfo> fromInfos;
-    const QHash<QString, QString> &colNameFromTo
-        = ColMapping::instance()->colNameFromTo();
-
-    // Process each old template file.
-    for (const auto &filePathFrom : m_filePathsFrom) {
-        QXlsx::Document xlsx(filePathFrom);
-        selectTemplateSheet(xlsx);
-        QXlsx::CellRange range = xlsx.dimension();
-        if (!range.isValid())
-            continue; // Skip if file is empty or invalid.
-
-        const int headerRow = 3;  // Assume header is in row 3.
-        FromInfo info;
-
-        // Read header row and update each header name if a mapping exists.
-        for (int col = range.firstColumn(); col <= range.lastColumn(); ++col) {
-            auto cell = xlsx.cellAt(headerRow, col);
-            QString headerValue = cell ? cell->value().toString() : QString();
-
-            // Update header if the mapping defines an updated name.
-            if (colNameFromTo.contains(headerValue))
-                headerValue = colNameFromTo.value(headerValue);
-
-            info.colNames << headerValue;
-            // Save the index relative to the header row (0-based).
-            info.nameToIndex[headerValue] = col - range.firstColumn();
-        }
-
-        // Read data rows (starting from the row after the header).
-        for (int row = headerRow + 1; row <= range.lastRow(); ++row) {
-            bool allEmpty = true;
-            QStringList rowData;
-            for (int col = range.firstColumn(); col <= range.lastColumn(); ++col) {
-                auto cell = xlsx.cellAt(row, col);
-                rowData << (cell ? cell->value().toString() : QString());
-                if (!rowData.last().trimmed().isEmpty())
-                {
-                    allEmpty = false;
-                }
-            }
-            if (allEmpty)
-            {
-                break;
-            }
-            info.lines.append(rowData);
-        }
-        fromInfos.append(info);
-    }
-
-    // Open the latest template file (m_filePathTo) to use its header and formatting.
-    QXlsx::Document newDoc(m_filePathTo);
-    selectTemplateSheet(newDoc);
-    QXlsx::CellRange rangeTo = newDoc.dimension();
-    const int headerRowTo = 3;  // Assume the new template header is in row 3.
-    QStringList colNamesTo;
-    for (int col = rangeTo.firstColumn(); col <= rangeTo.lastColumn(); ++col) {
-        auto cell = newDoc.cellAt(headerRowTo, col);
-        QString headerValue = cell ? cell->value().toString() : QString();
-        colNamesTo << headerValue;
-    }
-
-    // Determine where to start writing data rows (immediately after the header row).
-    int currentRow = headerRowTo + 1;
-
-    // For each file's data, map the (now updated) old columns to the new template columns.
-    for (const FromInfo &info : fromInfos) {
-        for (const QStringList &line : info.lines) {
-            // Create a new row matching the new template columns.
-            QStringList newRow;
-            newRow.resize(colNamesTo.size());
-            for (int i = 0; i < colNamesTo.size(); ++i) {
-                const QString &colName = colNamesTo.at(i);
-                // If the old file has this column (by its updated name), copy its value.
-                if (info.nameToIndex.contains(colName)) {
-                    int oldIndex = info.nameToIndex[colName];
-                    if (oldIndex >= 0 && oldIndex < line.size())
-                        newRow[i] = line.at(oldIndex);
-                }
-                // Otherwise, leave the cell empty.
-            }
-            // Write the merged row into newDoc.
-            for (int col = 0; col < newRow.size(); ++col) {
-                newDoc.write(currentRow, col + 1, newRow.at(col));
-            }
-            ++currentRow;
-        }
-    }
-
-    // Save the new document (with merged data) to the target file.
-    newDoc.saveAs(filePath);
+    static const QRegularExpression brackets(R"(\[[^\]]*\])");
+    fieldId.remove(brackets);
+    Q_ASSERT(!fieldId.contains("[") && !fieldId.contains("]"));
 }
-//*/
+
+int TemplateMergerFiller::_getIdSku(
+    const QHash<QString, int> &fieldId_index) const
+{
+    static QSet<QString> possibleValues{"item_sku", "contribution_sku#1.value"};
+    for (const auto &possibleSkuId : possibleValues)
+    {
+        auto itSku = fieldId_index.find(possibleSkuId);
+        if (itSku != fieldId_index.end())
+        {
+            return itSku.value();
+        }
+    }
+    Q_ASSERT(false);
+    return -1;
+}
+
+int TemplateMergerFiller::_getIdSkuParent(
+    const QHash<QString, int> &fieldId_index) const
+{
+    static QSet<QString> possibleValues{"parent_sku", "child_parent_sku_relationship#1.parent_sku"};
+    for (const auto &possibleSkuId : possibleValues)
+    {
+        auto itSkuParent = fieldId_index.find(possibleSkuId);
+        if (itSkuParent != fieldId_index.end())
+        {
+            return itSkuParent.value();
+        }
+    }
+    Q_ASSERT(false);
+    return -1;
+}
+
+int TemplateMergerFiller::_getRowFieldId(Version version) const
+{
+    if (version == V01)
+    {
+        return 2;
+    }
+    else if (version == V02)
+    {
+        return 4;
+    }
+    else
+    {
+        Q_ASSERT(false);
+        return -1;
+    }
+}
 

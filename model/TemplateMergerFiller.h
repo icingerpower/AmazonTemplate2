@@ -9,14 +9,17 @@
 class TemplateMergerFiller
 {
 public:
-    static const QString ID_SKU;
-    static const QString ID_SKU_PARENT;
     static const QStringList SHEETS_TEMPLATE;
     static const QStringList SHEETS_VALID_VALUES;
     static const QHash<QString, QString> SHEETS_MANDATORY;
     static const QSet<QString> VALUES_MANDATORY;
     static const QSet<QString> FIELD_IDS_NOT_AI;
     static const QSet<QString> FIELD_IDS_PUT_FIRST_VALUE;
+    enum Version{
+        V01
+        , V02
+    };
+
     enum Gender{
         Female,
         Male,
@@ -32,7 +35,8 @@ public:
 
     typedef std::function<QVariant(const QString &countryFrom,
                                    const QString &countryTo,
-                                   const QHash<QString, QString> &langCode_keywords,
+                                   const QString &langTo,
+                                   const QHash<QString, QHash<QString, QString>> &countryCode_langCode_keywords,
                                    Gender targetGender,
                                    Age age_range_description,
                                    const QVariant &origValue)> FuncFiller;
@@ -54,7 +58,10 @@ public:
     // We will use QSettings for crash retake
 
 private:
-    void readSkus(QXlsx::Document &document, const QString &countryCode, const QString &langCode,
+    Version _getDocumentVersion(QXlsx::Document &document) const;
+    void readSkus(QXlsx::Document &document,
+                  const QString &countryCode,
+                  const QString &langCode,
                   QStringList &skus,
                   QHash<QString, QString> &sku_skuParent,
                   QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_origValue,
@@ -68,9 +75,10 @@ private:
     void _readKeywords(const QString &filePath);
     QString _getCountryCode(const QString &templateFilePath) const;
     QString _getLangCode(const QString &templateFilePath) const;
-    void _selectTemplateSheet(QXlsx::Document &doc);
-    void _selectMandatorySheet(QXlsx::Document &doc);
-    void _selectValidValuesSheet(QXlsx::Document &doc);
+    QString _getLangCodeFromText(const QString &text) const;
+    void _selectTemplateSheet(QXlsx::Document &doc) const;
+    void _selectMandatorySheet(QXlsx::Document &doc) const;
+    void _selectValidValuesSheet(QXlsx::Document &doc) const;
 
     void _readFields(QXlsx::Document &document, const QString &countryCode, const QString &langCode);
     void _readMandatory(QXlsx::Document &document, const QString &countryCode, const QString &langCode);
@@ -78,10 +86,17 @@ private:
     void _preFillChildOny();
     bool _isSkuParent(const QString &sku) const;
     QHash<QString, int> _get_fieldId_index(QXlsx::Document &doc) const;
+    void _formatFieldId(QString &fieldId) const;
+    int _getIdSku(const QHash<QString, int> &fieldId_index) const;
+    int _getIdSkuParent(const QHash<QString, int> &fieldId_index) const;
+    int _getRowFieldId(Version version) const;
+    void _recordValueAllVersion(QHash<QString, QVariant> &fieldId_value,
+                                const QString fieldId,
+                                const QVariant &value);
     QString m_filePathFrom;
     QStringList m_toFillFilePaths;
     QStringList m_skus;
-    QHash<QString, QString> m_countryCode_keywords;
+    QHash<QString, QHash<QString, QString>> m_countryCode_langCode_keywords;
 
     QHash<QString, QHash<QString, QHash<QString, QString>>> m_countryCode_langCode_fieldName_fieldId;
     QHash<QString, QHash<QString, QSet<QString>>> m_countryCode_langCode_fieldIdMandatory;
