@@ -10,6 +10,7 @@ class TemplateMergerFiller
 {
 public:
     static const QString ID_SKU;
+    static const QString ID_SKU_PARENT;
     static const QStringList SHEETS_TEMPLATE;
     static const QStringList SHEETS_VALID_VALUES;
     static const QHash<QString, QString> SHEETS_MANDATORY;
@@ -53,9 +54,10 @@ public:
     // We will use QSettings for crash retake
 
 private:
-    void readSkus(QXlsx::Document &document, const QString &countryCode,
+    void readSkus(QXlsx::Document &document, const QString &countryCode, const QString &langCode,
                   QStringList &skus,
-                  QHash<QString, QHash<QString, QHash<QString, QVariant>>> &sku_countryCode_fieldId_origValue,
+                  QHash<QString, QString> &sku_skuParent,
+                  QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_origValue,
                   bool isMainFile = false);
     void setFilePathsToFill(const QString &keywordFilePath, const QStringList &toFillFilePaths);
     void readInfoSources(const QStringList &sourceFilePaths);
@@ -70,25 +72,28 @@ private:
     void _selectMandatorySheet(QXlsx::Document &doc);
     void _selectValidValuesSheet(QXlsx::Document &doc);
 
-    void _readFields(QXlsx::Document &document, const QString &countryCode);
-    void _readMandatory(QXlsx::Document &document, const QString &countryCode);
-    void _readValidValues(QXlsx::Document &document, const QString &countryCode);
+    void _readFields(QXlsx::Document &document, const QString &countryCode, const QString &langCode);
+    void _readMandatory(QXlsx::Document &document, const QString &countryCode, const QString &langCode);
+    void _readValidValues(QXlsx::Document &document, const QString &countryCode, const QString &langCode);
     void _preFillChildOny();
+    bool _isSkuParent(const QString &sku) const;
     QHash<QString, int> _get_fieldId_index(QXlsx::Document &doc) const;
     QString m_filePathFrom;
     QStringList m_toFillFilePaths;
     QStringList m_skus;
-    QHash<QString, QString> m_langCode_keywords;
+    QHash<QString, QString> m_countryCode_keywords;
 
-    QHash<QString, QHash<QString, QString>> m_countryCode_fieldName_fieldId;
-    QHash<QString, QSet<QString>> m_countryCode_fieldIdMandatory;
-    QHash<QString, QHash<QString, QStringList>> m_countryCode_fieldId_possibleValues;
-    QHash<QString, QSet<QString>> m_countryCode_fieldIdChildOnly; //AI
+    QHash<QString, QHash<QString, QHash<QString, QString>>> m_countryCode_langCode_fieldName_fieldId;
+    QHash<QString, QHash<QString, QSet<QString>>> m_countryCode_langCode_fieldIdMandatory;
+    QHash<QString, QHash<QString, QHash<QString, QStringList>>> m_countryCode_langCode_fieldId_possibleValues;
+    QHash<QString, QHash<QString, QSet<QString>>> m_countryCode_langCode_fieldIdChildOnly;
 
-    QHash<QString, QHash<QString, QHash<QString, QVariant>>> m_sku_countryCode_fieldId_origValue;
-    QHash<QString, QHash<QString, QHash<QString, QVariant>>> m_sku_countryCode_fieldId_value;
-    //QHash<QString, QHash<QString, QHash<QString, QString>>> m_countryCode_skuParent_fieldId_value;
-    //QHash<QString, QHash<QString, QHash<QString, QString>>> m_countryCode_sku_fieldId_value;
+    QHash<QString, QString> m_sku_skuParent;
+    QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> m_sku_countryCode_langCode_fieldId_origValue;
+    QHash<QString, QHash<QString, QHash<QString, QVariant>>> m_skuParent_langCode_fieldId_value;
+    QHash<QString, QHash<QString, QHash<QString, QVariant>>> m_sku_langCode_fieldId_value;
+    QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> m_sku_countryCode_langCode_fieldId_value;
+
     static FuncFiller FUNC_FILLER_COPY;
     static FuncFiller FUNC_FILLER_CONVERT_CLOTHE_SIZE;
     static FuncFiller FUNC_FILLER_CONVERT_SHOE_SIZE;
