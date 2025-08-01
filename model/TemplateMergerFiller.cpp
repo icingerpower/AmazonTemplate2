@@ -781,7 +781,6 @@ void TemplateMergerFiller::readSkus(QXlsx::Document &document,
                     _recordValueAllVersion(sku_countryCode_langCode_fieldId_origValue[sku][countryCode][langCode],
                                            fieldId,
                                            valueVariant);
-                    //sku_countryCode_langCode_fieldId_origValue[sku][countryCode][langCode][fieldId] = valueVariant;
                 }
             }
         }
@@ -885,7 +884,6 @@ void TemplateMergerFiller::readInfoSources(const QStringList &sourceFilePaths)
                                 _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCode][langCode],
                                                        fieldId,
                                                        itFieldId_value.value());
-                                //m_sku_countryCode_langCode_fieldId_value[sku][countryCode][langCode][fieldId] = itFieldId_value.value();
                             }
                         }
                     }
@@ -935,8 +933,6 @@ void TemplateMergerFiller::fillDataAutomatically()
                                                                  m_gender,
                                                                  m_age,
                                                                  origValue);
-                                //m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId]
-                                //= filler(countryCodeFrom, countryCodeTo, m_countryCode_langCode_keywords, m_gender, m_age, origValue);
                                 _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
                                                        fieldId,
                                                        fillerValue);
@@ -945,7 +941,6 @@ void TemplateMergerFiller::fillDataAutomatically()
                             {
                                 Q_ASSERT(m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo].contains(fieldId));
                                 const auto &validValues = m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo][fieldId];
-                                //m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId] = validValues[0];
                                 _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
                                                        fieldId,
                                                        validValues[0]);
@@ -962,8 +957,6 @@ void TemplateMergerFiller::fillDataAutomatically()
                                                                      m_gender,
                                                                      m_age,
                                                                      origValue);
-                                    //m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId]
-                                    //= filler(countryCodeFrom, countryCodeTo, m_countryCode_langCode_keywords, m_gender, m_age, origValue);
                                     _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
                                                            fieldId,
                                                            fillerValue);
@@ -986,8 +979,6 @@ void TemplateMergerFiller::fillDataAutomatically()
                         {
                             if (m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo].contains(fieldId))
                             {
-                                //m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId]
-                                //= m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][otherFieldId];
                                 _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
                                                        fieldId,
                                                        m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][otherFieldId]);
@@ -1178,13 +1169,9 @@ void TemplateMergerFiller::_readMandatory(
         {
             QString fieldId{cellFieldId->value().toString()};
             _formatFieldId(fieldId);
-            //QString fieldName{cellFieldName->value().toString()};
             QString mandatory{cellMandatory->value().toString()};
             if (cellFieldName && cellMandatory && fieldId != mandatory)
             {
-                //Q_ASSERT(m_countryCode_langCode_fieldName_fieldId[countryCode][langCode].contains(fieldName));
-                //const auto &fieldId = m_countryCode_langCode_fieldName_fieldId[countryCode][langCode][fieldName];
-
                 if (VALUES_MANDATORY.contains(mandatory)
                     || FIELD_IDS_FILLER.contains(fieldId)
                     || FIELD_IDS_COPY_FROM_OTHER.contains(fieldId)
