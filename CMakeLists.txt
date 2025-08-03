@@ -11,8 +11,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Network)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network)
 
 # Compile and install QXlsx
 #sudo apt-get install libxkbcommon-dev
@@ -28,6 +28,7 @@ message("Qt found in path: ${Qt_DIR_HINT}")
 find_package(QXlsxQt6 REQUIRED HINTS "${Qt_DIR_HINT}/../../../../lib/cmake/QXlsxQt6")
 
 include(../common/workingdirectory/workingdirectory.cmake)
+include(../common/openai/openai.cmake)
 
 include(gui/gui.cmake)
 include(model/model.cmake)
@@ -38,6 +39,7 @@ set(PROJECT_SOURCES
         "../common/types/types.cpp"
         ${MODEL_FILES}
         ${GUI_FILES}
+        ${OPENAI_FILES}
         ${WORKING_DIR_FILES}
 )
 
@@ -66,6 +68,7 @@ endif()
 
 target_link_libraries(AmazonTemplate2 PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
+    Qt${QT_VERSION_MAJOR}::Network
     QXlsx::QXlsx
 )
 

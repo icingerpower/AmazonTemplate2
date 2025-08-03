@@ -9,6 +9,7 @@
 #include <xlsxcellrange.h>
 
 #include "ExceptionTemplateError.h"
+#include "GptFiller.h"
 
 #include "TemplateMergerFiller.h"
 
@@ -393,6 +394,10 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_SHOE_
 const QSet<QString> TemplateMergerFiller::FIELD_IDS_NOT_AI{
     "feed_product_type"
     , "product_type#1.value"
+    , "external_product_id"
+    , "amzn1.volt.ca.product_id_value"
+    , "external_product_type"
+    , "amzn1.volt.ca.product_id_type"
     , "item_sku"
     , "contribution_sku#1.value"
     , "brand_name"
@@ -422,6 +427,28 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_PUT_FIRST_VALUE{
     , "recommended_browse_nodes#1.value"
 };
 
+const QSet<QString> TemplateMergerFiller::FIELD_IDS_EXTRA_MANDATORY{
+    "color_name"
+    , "color#1.value"
+    , "batteries_required"
+    , "batteries_required#1.value"
+    , "supplier_declared_dg_hz_regulation1"
+    , "supplier_declared_dg_hz_regulation#1.value"
+};
+
+const QSet<QString> TemplateMergerFiller::FIELD_IDS_PATTERN_REMOVE_AS_MANDATORY{
+    "lithium"
+    , "number_of_batteries"
+    , "battery_type"
+    , "battery_weight"
+    , "ghs_classification"
+    , "image"
+    , "united_nations_regulatory"
+    , "url"
+    , "material_regulation"
+    , "battery_cell"
+};
+
 const QHash<QString, TemplateMergerFiller::FuncFiller>
     TemplateMergerFiller::FIELD_IDS_FILLER_NO_SOURCES
 {
@@ -433,6 +460,8 @@ const QHash<QString, TemplateMergerFiller::FuncFiller>
     , {"child_parent_sku_relationship#1.child_relationship_type", FUNC_FILLER_COPY}
     , {"variation_theme", FUNC_FILLER_COPY}
     , {"variation_theme#1.name", FUNC_FILLER_COPY}
+    , {"manufacturer", FUNC_FILLER_COPY}
+    , {"manufacturer#1.value", FUNC_FILLER_COPY}
 };
 
 const QSet<QString> TemplateMergerFiller::FIELD_IDS_NO_SOURCES{
@@ -456,10 +485,13 @@ const QHash<QString, TemplateMergerFiller::FuncFiller> TemplateMergerFiller::FIE
     , {"shapewear_size#1.size", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
     , {"shapewear_size_to", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
     , {"shapewear_size#1.size_to", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
+    , {"brand_name", FUNC_FILLER_COPY}
+    , {"brand#1.value", FUNC_FILLER_COPY}
     , {"item_sku", FUNC_FILLER_COPY}
     , {"contribution_sku#1.value", FUNC_FILLER_COPY}
     , {"external_product_id", FUNC_FILLER_COPY}
     , {"amzn1.volt.ca.product_id_value", FUNC_FILLER_COPY}
+    , {"external_product_id_type", FUNC_FILLER_COPY}
     , {"external_product_type", FUNC_FILLER_COPY}
     , {"amzn1.volt.ca.product_id_type", FUNC_FILLER_COPY}
     , {"package_length", FUNC_FILLER_COPY}
@@ -479,9 +511,10 @@ const QHash<QString, TemplateMergerFiller::FuncFiller> TemplateMergerFiller::FIE
     , {"list_price#1.value_with_tax", FUNC_FILLER_PRICE}
 };
 
-const QHash<QString, QSet<QString>> TemplateMergerFiller::FIELD_IDS_COPY_FROM_OTHER
+const QHash<QString, QStringList> TemplateMergerFiller::FIELD_IDS_COPY_FROM_OTHER
     {
-        {"size_map", {"apparel_size", "footwear_size", "shapewear_size"}}
+        {"size_map", {"apparel_size", "footwear_size", "shapewear_size", "size_name"}}
+        , {"size_name", {"apparel_size", "footwear_size", "shapewear_size", "size_map"}}
 };
 
 void TemplateMergerFiller::_recordValueAllVersion(
@@ -526,6 +559,22 @@ void TemplateMergerFiller::_recordValueAllVersion(
     fieldId_value[mappingFieldId[fieldId]] = value;
 }
 
+QString TemplateMergerFiller::_getCustomInstructions(const QString &sku) const
+{
+    QString instructions{m_customInstructions};
+    for (auto it = m_skuPattern_customInstructions.begin();
+         it != m_skuPattern_customInstructions.end(); ++it)
+    {
+        const auto &skuPattern = it.key();
+        if (sku.contains(skuPattern, Qt::CaseInsensitive))
+        {
+            instructions += " ";
+            instructions += it.value();
+        }
+    }
+    return instructions;
+}
+
 void TemplateMergerFiller::_preFillChildOny()
 {
     static QSet<QString> fieldIdsChildOnly{"apparel_size_class"
@@ -560,7 +609,9 @@ void TemplateMergerFiller::_preFillChildOny()
                                            , "package_width_unit_of_measure"
                                            , "item_package_dimensions#1.width.unit"
                                            , "batteries_required"
+                                           , "batteries_required#1.value"
                                            , "supplier_declared_dg_hz_regulation1"
+                                           , "supplier_declared_dg_hz_regulation#1.value"
                                            , "condition_type"
                                            , "condition_type#1.value"
                                            , "currency"
@@ -631,26 +682,135 @@ const QSet<QString> TemplateMergerFiller::VALUES_MANDATORY
     return values;
 }();
 
-TemplateMergerFiller::TemplateMergerFiller(const QString &filePathFrom)
+TemplateMergerFiller::TemplateMergerFiller(const QString &filePathFrom,
+                                           const QString &customInstructions,
+                                           const QString &apiKey,
+                                           std::function<void (QString &)> callBackLog)
 {
+    m_callBackLog = callBackLog;
     m_filePathFrom = filePathFrom;
+    if (!customInstructions.trimmed().isEmpty())
+    {
+        const QStringList &lines = customInstructions.split("\n");
+        m_customInstructions = lines[0].trimmed();
+        if (!m_customInstructions.endsWith("."))
+        {
+            m_customInstructions += ".";
+        }
+        QStringList lastSkus;
+        QStringList lastInstructions;
+        for (int i=1; i<lines.size(); ++i)
+        {
+            const auto &line = lines[i];
+            if (line.startsWith("["))
+            {
+                if (!lastSkus.isEmpty() && !lastInstructions.isEmpty())
+                {
+                    for (const auto &sku : lastSkus)
+                    {
+                        m_skuPattern_customInstructions[sku] = lastInstructions.join(" ");
+                    }
+                }
+                lastSkus.clear();
+                lastInstructions.clear();
+                const auto &lineSkus = lines[i].mid(1, line.size()-2);
+                const auto &skus = lineSkus.split(",");
+                for (const auto &sku : skus)
+                {
+                    lastSkus << sku.trimmed();
+                }
+            }
+            else if (!lastSkus.isEmpty())
+            {
+                lastInstructions << line.trimmed();
+                if (!lastInstructions.last().endsWith("."))
+                {
+                    lastInstructions.last() += ".";
+                }
+            }
+        }
+        if (!lastSkus.isEmpty() && !lastInstructions.isEmpty())
+        {
+            for (const auto &sku : lastSkus)
+            {
+                m_skuPattern_customInstructions[sku] = lastInstructions.join(" ");
+            }
+        }
+    }
     m_age = UndefinedAge;
     m_gender = UndefinedGender;
+    QDir workingDir{QFileInfo{filePathFrom}.dir()};
+    m_workdingDirImages = workingDir.absoluteFilePath("images");
+    m_gptFiller = new GptFiller{workingDir.path(), apiKey};
 }
 
-void TemplateMergerFiller::fillExcelFiles(
-    const QString &keywordFilePath,
-    const QStringList &sourceFilePaths,
-    const QStringList &toFillFilePaths)
+TemplateMergerFiller::~TemplateMergerFiller()
 {
-    setFilePathsToFill(keywordFilePath, toFillFilePaths);
+    m_gptFiller->deleteLater();
+}
+
+void TemplateMergerFiller::clearPreviousChatgptReplies()
+{
+    m_gptFiller->clear();
+}
+
+void TemplateMergerFiller::fillExcelFiles(const QString &keywordFilePath,
+                                          const QStringList &sourceFilePaths,
+                                          const QStringList &toFillFilePaths,
+                                          std::function<void (int, int)> callBackProgress,
+                                          std::function<void ()> callBackFinished)
+{
+    _setFilePathsToFill(keywordFilePath, toFillFilePaths);
     if (!sourceFilePaths.isEmpty())
     {
-        readInfoSources(sourceFilePaths);
+        _readInfoSources(sourceFilePaths);
     }
-    fillDataAutomatically();
-    fillDataLeftChatGpt();
-    createToFillXlsx();
+    _fillDataAutomatically();
+
+    // Here we ask ChatGpt to remove the field ids indicated as mandatory that in fact are not
+    QSet<QString> *mandatoryFieldIds = new QSet<QString>{};
+    for (auto itCountryCode = m_countryCode_langCode_fieldIdMandatory.begin();
+         itCountryCode != m_countryCode_langCode_fieldIdMandatory.end(); ++itCountryCode)
+    {
+        for (auto itLangCode = itCountryCode.value().begin();
+             itLangCode != itCountryCode.value().end(); ++itLangCode)
+        {
+            mandatoryFieldIds->unite(itLangCode.value());
+        }
+    }
+    mandatoryFieldIds->subtract(FIELD_IDS_EXTRA_MANDATORY);
+    m_gptFiller->askTrueMandatory(m_productType,
+                                  *mandatoryFieldIds,
+                                  [this, mandatoryFieldIds, callBackProgress, callBackFinished](const QSet<QString> &notMandatoryFieldIds){
+                                      QString text{QObject::tr("CHATGPT suggested to remove the following field ids as mandatory:\n")};
+                                      QStringList notMandatoryFieldIdsSorted{notMandatoryFieldIds.begin(), notMandatoryFieldIds.end()};
+                                      std::sort(notMandatoryFieldIdsSorted.begin(), notMandatoryFieldIdsSorted.end());
+                                      text += notMandatoryFieldIdsSorted.join("\n");
+                                      text += "\n\nThe following field ids remain:\n";
+                                      auto remainingMandatoryFieldIds = *mandatoryFieldIds;
+                                      remainingMandatoryFieldIds.subtract(notMandatoryFieldIds);
+                                      QStringList remainingMandatoryFieldIdsSorted{remainingMandatoryFieldIds.begin(), remainingMandatoryFieldIds.end()};
+                                      std::sort(remainingMandatoryFieldIdsSorted.begin(), remainingMandatoryFieldIdsSorted.end());
+                                      text += remainingMandatoryFieldIdsSorted.join("\n");
+                                      qDebug() << text;
+                                      m_callBackLog(text);
+                                      for (auto itCountryCode = m_countryCode_langCode_fieldIdMandatory.begin();
+                                           itCountryCode != m_countryCode_langCode_fieldIdMandatory.end(); ++itCountryCode)
+                                      {
+                                          for (auto itLangCode = itCountryCode.value().begin();
+                                               itLangCode != itCountryCode.value().end(); ++itLangCode)
+                                          {
+                                              itLangCode.value().subtract(notMandatoryFieldIds);
+                                          }
+                                      }
+                                      delete mandatoryFieldIds;
+                                      _fillDataLeftChatGpt(callBackProgress, callBackFinished);
+                                  });
+}
+
+void TemplateMergerFiller::stopChatGPT()
+{
+    m_gptFiller->askStop();
 }
 
 TemplateMergerFiller::Version TemplateMergerFiller::_getDocumentVersion(
@@ -674,11 +834,11 @@ TemplateMergerFiller::Version TemplateMergerFiller::_getDocumentVersion(
     return V01;
 }
 
-void TemplateMergerFiller::readSkus(QXlsx::Document &document,
+void TemplateMergerFiller::_readSkus(QXlsx::Document &document,
                                     const QString &countryCode,
                                     const QString &langCode,
                                     QStringList &skus,
-                                    QHash<QString, QString> &sku_skuParent,
+                                    QHash<QString, GptFiller::SkuInfo> &sku_infos,
                                     QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_origValue,
                                     bool isMainFile)
 {
@@ -686,6 +846,7 @@ void TemplateMergerFiller::readSkus(QXlsx::Document &document,
     const auto &fieldId_index = _get_fieldId_index(document);
     int indColSku = _getIdSku(fieldId_index);
     int indColSkuParent = _getIdSkuParent(fieldId_index);
+    int indColColorName = _getIdSkuColorName(fieldId_index);
     const auto &dim = document.dimension();
     QHash<QString, qsizetype> fieldId_count;
     int nParents = 0;
@@ -708,13 +869,27 @@ void TemplateMergerFiller::readSkus(QXlsx::Document &document,
         }
         else
         {
-        auto cellSkuParent = document.cellAt(i+1, indColSkuParent + 1);
-        if (cellSkuParent)
-        {
-            QString skuParent{cellSku->value().toString()};
-            sku_skuParent[sku] = skuParent;
-        }
-
+            auto cellSkuParent = document.cellAt(i+1, indColSkuParent + 1);
+            auto cellSkuColorName = document.cellAt(i+1, indColColorName + 1);
+            if (cellSkuParent)
+            {
+                QString skuParent{cellSkuParent->value().toString()};
+                sku_infos[sku].skuParent = skuParent;
+                sku_infos[sku].customInstructions = _getCustomInstructions(sku);
+                if (cellSkuColorName)
+                {
+                    QString colorName{cellSkuColorName->value().toString()};
+                    sku_infos[sku].colorOrig = colorName;
+                    QString imageFileName{skuParent};
+                    if (!imageFileName.isEmpty())
+                    {
+                        imageFileName += "-";
+                        imageFileName += colorName;
+                    }
+                    imageFileName += ".jpg";
+                    sku_infos[sku].imageFilePath = m_workdingDirImages.absoluteFilePath(imageFileName);
+                }
+            }
         }
         for (auto it = fieldId_index.cbegin();
              it != fieldId_index.cend(); ++it)
@@ -728,7 +903,15 @@ void TemplateMergerFiller::readSkus(QXlsx::Document &document,
                 QString valueString{valueVariant.toString()};
                 if (isMainFile)
                 {
-                    if (fieldId == "target_gender"
+                    if (fieldId == "feed_product_type"
+                        || fieldId == "product_type#1.value")
+                    {
+                        if (!valueString.isEmpty())
+                        {
+                            m_productType = valueString;
+                        }
+                    }
+                    else if (fieldId == "target_gender"
                         || fieldId == "target_gender#1.value")
                     {
                         static QSet<QString> women{"Féminin", "Female"};
@@ -792,6 +975,16 @@ void TemplateMergerFiller::readSkus(QXlsx::Document &document,
         const QSet<qsizetype> validCounts{valid1, valid2};
         for (const auto &fieldId : FIELD_IDS_NOT_AI)
         {
+            static QSet<QString> excludeFieldIds{ //Field ids that can be uncomplete as retrieved from source
+                "external_product_id"
+                , "amzn1.volt.ca.product_id_value"
+                , "external_product_type"
+                , "amzn1.volt.ca.product_id_type"
+            };
+            if (excludeFieldIds.contains(fieldId))
+            {
+                continue;
+            }
             if (fieldId_index.contains(fieldId))
             {
                 qsizetype curCount = fieldId_count.value(fieldId, 0);
@@ -810,10 +1003,59 @@ void TemplateMergerFiller::readSkus(QXlsx::Document &document,
                 }
             }
         }
+        QStringList skuMissingColors;
+        QStringList missingFileNameImages;
+        for (auto it = m_sku_skuInfos.begin();
+             it != m_sku_skuInfos.end(); ++it)
+        {
+            const auto &info = it.value();
+            if (!QFile::exists(info.imageFilePath))
+            {
+                QFileInfo imageFileInfo{info.imageFilePath};
+                QString fileName{"images/"};
+                fileName += imageFileInfo.fileName();
+                if (!missingFileNameImages.contains(fileName))
+                {
+                    missingFileNameImages << fileName;
+                }
+            }
+            if (info.colorOrig.isEmpty())
+            {
+                if (!skuMissingColors.contains(it.key()))
+                {
+                    skuMissingColors << it.key();
+                }
+            }
+        }
+        if (skuMissingColors.size() > 0)
+        {
+            std::sort(skuMissingColors.begin(), skuMissingColors.end());
+            ExceptionTemplateError exception;
+            exception.setInfos(QObject::tr("Images missing"),
+                               QObject::tr("The following SKUs doesn't have a color name:\n%1")
+                                   .arg(skuMissingColors.join("\n")));
+            exception.raise();
+        }
+        if (missingFileNameImages.size() > 0)
+        {
+            std::sort(missingFileNameImages.begin(), missingFileNameImages.end());
+            ExceptionTemplateError exception;
+            exception.setInfos(QObject::tr("Images missing"),
+                               QObject::tr("The following images are missing:\n%1")
+                                   .arg(missingFileNameImages.join("\n")));
+            exception.raise();
+        }
+        if (m_productType.isEmpty())
+        {
+            ExceptionTemplateError exception;
+            exception.setInfos(QObject::tr("Product type missing"),
+                               QObject::tr("The product type is needed"));
+            exception.raise();
+        }
     }
 }
 
-void TemplateMergerFiller::setFilePathsToFill(const QString &keywordFilePath,
+void TemplateMergerFiller::_setFilePathsToFill(const QString &keywordFilePath,
                                               const QStringList &toFillFilePaths)
 {
     m_toFillFilePaths = toFillFilePaths;
@@ -834,7 +1076,12 @@ void TemplateMergerFiller::setFilePathsToFill(const QString &keywordFilePath,
         QXlsx::Document document(toFillFilePath);
         if (countryCodeTo == countryCodeFrom)
         {
-            readSkus(document, countryCodeFrom, langCodeTo, m_skus, m_sku_skuParent, m_sku_countryCode_langCode_fieldId_origValue, true);
+            _readSkus(document, countryCodeFrom, langCodeTo, m_skus, m_sku_skuInfos, m_sku_countryCode_langCode_fieldId_origValue, true);
+            for (auto it=m_sku_skuInfos.begin();
+                 it!=m_sku_skuInfos.end(); ++it)
+            {
+                m_skuParent_skus.insert(it.value().skuParent, it.key());
+            }
         }
         _readFields(document, countryCodeTo, langCodeTo);
         _readMandatory(document, countryCodeTo, langCodeTo);
@@ -843,7 +1090,7 @@ void TemplateMergerFiller::setFilePathsToFill(const QString &keywordFilePath,
     }
 }
 
-void TemplateMergerFiller::readInfoSources(const QStringList &sourceFilePaths)
+void TemplateMergerFiller::_readInfoSources(const QStringList &sourceFilePaths)
 {
     QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> sku_countryCode_langCode_fieldId_origValue;
     for (const auto &sourceFilePath : sourceFilePaths)
@@ -852,8 +1099,8 @@ void TemplateMergerFiller::readInfoSources(const QStringList &sourceFilePaths)
         const auto &langCodeTo = _getLangCode(sourceFilePath);
         QXlsx::Document document(sourceFilePath);
         QStringList skus;
-        QHash<QString, QString> sku_skuParent;
-        readSkus(document, countryCode, langCodeTo, skus, sku_skuParent, sku_countryCode_langCode_fieldId_origValue);
+        QHash<QString, GptFiller::SkuInfo> sku_infos;
+        _readSkus(document, countryCode, langCodeTo, skus, sku_infos, sku_countryCode_langCode_fieldId_origValue);
     }
     QSet<QString> skusSet{m_skus.begin(), m_skus.end()};
     for (auto itSku = sku_countryCode_langCode_fieldId_origValue.begin();
@@ -893,7 +1140,7 @@ void TemplateMergerFiller::readInfoSources(const QStringList &sourceFilePaths)
     }
 }
 
-void TemplateMergerFiller::fillDataAutomatically()
+void TemplateMergerFiller::_fillDataAutomatically()
 {
     //m_sku_countryCode_fieldId_value;
     const auto &countryCodeFrom = _getCountryCode(m_filePathFrom);
@@ -996,8 +1243,21 @@ void TemplateMergerFiller::fillDataAutomatically()
                                     {
                                         if (m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom].contains(fieldId))
                                         {
+                                            TemplateMergerFiller::FuncFiller filler;
                                             QVariant origValue = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][fieldId];
-                                            const auto &filler = FIELD_IDS_FILLER_NO_SOURCES[otherFieldId];
+                                            if (FIELD_IDS_FILLER_NO_SOURCES.contains(otherFieldId))
+                                            {
+                                                filler = FIELD_IDS_FILLER_NO_SOURCES[otherFieldId];
+                                            }
+                                            else if (FIELD_IDS_FILLER.contains(otherFieldId))
+                                            {
+                                                filler = FIELD_IDS_FILLER[otherFieldId];
+                                            }
+                                            else
+                                            {
+                                                continue;
+                                            }
+                                            //const auto &filler = FIELD_IDS_FILLER_NO_SOURCES[otherFieldId];
                                             const auto &fillerValue = filler(countryCodeFrom,
                                                                              countryCodeTo,
                                                                              langCodeTo,
@@ -1020,12 +1280,30 @@ void TemplateMergerFiller::fillDataAutomatically()
     }
 }
 
-void TemplateMergerFiller::fillDataLeftChatGpt()
+void TemplateMergerFiller::_fillDataLeftChatGpt(
+    std::function<void (int, int)> callBackProgress,
+    std::function<void ()> callBackFinished)
 {
-    // Product is new, without any batterie, as shown on the image, from china. We use international metric system. Inventory is Year round replenishable
+    const auto &countryCodeFrom = _getCountryCode(m_filePathFrom);
+    const auto &clangCodeFrom = _getLangCode(m_filePathFrom);
+    m_gptFiller->askFilling(
+        countryCodeFrom
+        , clangCodeFrom
+        , FIELD_IDS_NOT_AI
+        , m_sku_skuInfos
+        , m_sku_countryCode_langCode_fieldId_origValue
+        , m_countryCode_langCode_fieldId_possibleValues
+        , m_countryCode_langCode_fieldIdMandatory
+        , m_skuParent_colorOrig_langCode_fieldId_valueText
+        , m_sku_countryCode_langCode_fieldId_value
+        , [this, callBackFinished](){
+            _createToFillXlsx();
+            callBackFinished();
+        },
+        callBackProgress);
 }
 
-void TemplateMergerFiller::createToFillXlsx()
+void TemplateMergerFiller::_createToFillXlsx()
 {
     for (const auto &toFillFilePath : m_toFillFilePaths)
     {
@@ -1178,9 +1456,22 @@ void TemplateMergerFiller::_readMandatory(
                     || FIELD_IDS_NOT_AI.contains(fieldId)
                     || FIELD_IDS_PUT_FIRST_VALUE.contains(fieldId)
                     || FIELD_IDS_FILLER_NO_SOURCES.contains(fieldId)
+                    || FIELD_IDS_EXTRA_MANDATORY.contains(fieldId)
                     )
                 {
-                    m_countryCode_langCode_fieldIdMandatory[countryCode][langCode].insert(fieldId);
+                    bool toExclude = false;
+                    for (const auto &patternToExclude : FIELD_IDS_PATTERN_REMOVE_AS_MANDATORY)
+                    {
+                        if (fieldId.contains(patternToExclude, Qt::CaseInsensitive))
+                        {
+                            toExclude = true;
+                            break;
+                        }
+                    }
+                    if (!toExclude)
+                    {
+                        m_countryCode_langCode_fieldIdMandatory[countryCode][langCode].insert(fieldId);
+                    }
                 }
             }
         }
@@ -1433,28 +1724,31 @@ int TemplateMergerFiller::_getIdSku(
     const QHash<QString, int> &fieldId_index) const
 {
     static QSet<QString> possibleValues{"item_sku", "contribution_sku#1.value"};
-    for (const auto &possibleSkuId : possibleValues)
-    {
-        auto itSku = fieldId_index.find(possibleSkuId);
-        if (itSku != fieldId_index.end())
-        {
-            return itSku.value();
-        }
-    }
-    Q_ASSERT(false);
-    return -1;
+    return _getIdCol(fieldId_index, possibleValues);
 }
 
 int TemplateMergerFiller::_getIdSkuParent(
     const QHash<QString, int> &fieldId_index) const
 {
     static QSet<QString> possibleValues{"parent_sku", "child_parent_sku_relationship#1.parent_sku"};
+    return _getIdCol(fieldId_index, possibleValues);
+}
+
+int TemplateMergerFiller::_getIdSkuColorName(
+    const QHash<QString, int> &fieldId_index) const
+{
+    static QSet<QString> possibleValues{"color_name", "color#1.value"};
+    return _getIdCol(fieldId_index, possibleValues);
+}
+
+int TemplateMergerFiller::_getIdCol(const QHash<QString, int> &fieldId_index, const QSet<QString> &possibleValues) const
+{
     for (const auto &possibleSkuId : possibleValues)
     {
-        auto itSkuParent = fieldId_index.find(possibleSkuId);
-        if (itSkuParent != fieldId_index.end())
+        auto it = fieldId_index.find(possibleSkuId);
+        if (it != fieldId_index.end())
         {
-            return itSkuParent.value();
+            return it.value();
         }
     }
     Q_ASSERT(false);

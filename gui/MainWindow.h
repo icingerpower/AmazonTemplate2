@@ -13,6 +13,7 @@ QT_END_NAMESPACE
 
 class FileModelSources;
 class FileModelToFill;
+class TemplateMergerFiller;
 
 class MainWindow : public QMainWindow
 {
@@ -30,6 +31,12 @@ public slots:
     void extractProductInfos();
     void viewFormatExtraInfosGpt();
     void generate();
+    void clearPreviousChatgptReplies();
+    void displayLog(const QString &logMEssage);
+
+private slots:
+    void onApiKeyChanged(const QString &key);
+    void _enableGenerateButtonIfValid();
 
 private:
     Ui::MainWindow *ui;
@@ -37,5 +44,7 @@ private:
     QString m_settingsFilePath;
     QDir m_workingDir;
     QString m_settingsKeyExtraInfos;
+    QString m_settingsKeyApi;
+    TemplateMergerFiller *m_templateMergerFiller;
 };
 #endif // MAINWINDOW_H

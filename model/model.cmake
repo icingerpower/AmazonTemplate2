@@ -1,6 +1,8 @@
 SET(MODEL_FILES
     ${CMAKE_CURRENT_LIST_DIR}/ColMapping.h
     ${CMAKE_CURRENT_LIST_DIR}/ColMapping.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/GptFiller.h
+    ${CMAKE_CURRENT_LIST_DIR}/GptFiller.cpp
     ${CMAKE_CURRENT_LIST_DIR}/TemplateMergerFiller.h
     ${CMAKE_CURRENT_LIST_DIR}/TemplateMergerFiller.cpp
     ${CMAKE_CURRENT_LIST_DIR}/FileModelSources.h

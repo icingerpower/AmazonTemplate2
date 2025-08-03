@@ -22,11 +22,21 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     ui->buttonGenerate->setEnabled(false);
     ui->buttonExtractProductInfos->setEnabled(false);
+    ui->progressBar->setVisible(false);
+    ui->progressBar->setMaximum(100);
+    ui->progressBar->setValue(0);
     m_settingsKeyExtraInfos = "MainWindowExtraInfos";
+    m_settingsKeyApi = "MainWindowKey";
+    m_templateMergerFiller = nullptr;
     auto settings = WorkingDirectoryManager::instance()->settings();
     if (settings->contains(m_settingsKeyExtraInfos))
     {
         ui->textEditExtraInfos->setText(settings->value(m_settingsKeyExtraInfos).toString());
+    }
+    if (settings->contains(m_settingsKeyApi))
+    {
+        auto key = settings->value(m_settingsKeyApi).toString();
+        ui->lineEditOpenAiKey->setText(key);
     }
     _connectslots();
 }
@@ -34,6 +44,7 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
+    delete m_templateMergerFiller;
 }
 
 QSharedPointer<QSettings> MainWindow::settings() const
@@ -72,7 +83,7 @@ void MainWindow::browseSourceMain()
         const auto &workingDirPath = m_workingDir.path();
         settings.setValue(key, workingDirPath);
         ui->lineEditTo->setText(filePath);
-        ui->buttonGenerate->setEnabled(true);
+        _enableGenerateButtonIfValid();
         auto *curModelSource = ui->treeViewSources->model();
         auto *fileModelSources
             = new FileModelSources{workingDirPath, ui->treeViewSources};
@@ -112,6 +123,14 @@ void MainWindow::_connectslots()
             &QPushButton::clicked,
             this,
             &MainWindow::viewFormatExtraInfosGpt);
+    connect(ui->buttonClearPreviousChatGptReplies,
+            &QPushButton::clicked,
+            this,
+            &MainWindow::clearPreviousChatgptReplies);
+    connect(ui->lineEditOpenAiKey,
+            &QLineEdit::textChanged,
+            this,
+            &MainWindow::onApiKeyChanged);
     connect(ui->textEditExtraInfos,
             &QTextEdit::textChanged,
             this,
@@ -131,9 +150,36 @@ void MainWindow::_connectslots()
             });
 }
 
+void MainWindow::_enableGenerateButtonIfValid()
+{
+    if (!ui->lineEditOpenAiKey->text().isEmpty()
+        && !ui->lineEditTo->text().isEmpty())
+    {
+        ui->buttonGenerate->setEnabled(true);
+    }
+    else
+    {
+        ui->buttonGenerate->setEnabled(false);
+    }
+}
+
 void MainWindow::generate()
 {
-    TemplateMergerFiller templateMergerFiller{ui->lineEditTo->text()};
+    if (m_templateMergerFiller != nullptr)
+    {
+        m_templateMergerFiller->stopChatGPT();
+        auto *templateMergerFiller = m_templateMergerFiller;
+        QTimer::singleShot(5000, this, [templateMergerFiller]{
+            delete templateMergerFiller;
+        });
+    }
+    m_templateMergerFiller = new TemplateMergerFiller{ui->lineEditTo->text(),
+                                                      ui->textEditExtraInfos->toPlainText(),
+                                                      ui->lineEditOpenAiKey->text(),
+                                                      [this](const QString &logMessage)
+                                                      {
+                                                          displayLog(logMessage);
+                                                      }};
     try
     {
         const auto &keywordsFileInfos = m_workingDir.entryInfoList(
@@ -147,10 +193,21 @@ void MainWindow::generate()
         else
         {
             const auto &keywordFilePath = keywordsFileInfos.last().absoluteFilePath();
-            templateMergerFiller.fillExcelFiles(
+            ui->progressBar->setVisible(true);
+            m_templateMergerFiller->fillExcelFiles(
                 keywordFilePath,
                 getFileModelSources()->getFilePaths()
-                , getFileModelToFill()->getFilePaths());
+                , getFileModelToFill()->getFilePaths()
+                , [this](int progress, int max){
+                    ui->progressBar->setMaximum(max);
+                    ui->progressBar->setValue(progress);
+                }
+                , [this](){
+                    QMessageBox::information(
+                        this,
+                        tr("Files created"),
+                        tr("The template files were created successfully"));
+                    });
         }
     }
     catch (const ExceptionTemplateError &exception)
@@ -159,6 +216,37 @@ void MainWindow::generate()
                              exception.title(),
                              exception.error());
     }
+}
+
+void MainWindow::clearPreviousChatgptReplies()
+{
+    TemplateMergerFiller templateMergerFiller{ui->lineEditTo->text(),
+                                              ui->textEditExtraInfos->toPlainText(),
+                                              ui->lineEditOpenAiKey->text(),
+                                              [this](const QString &logMessage)
+                                              {
+                                                  displayLog(logMessage);
+                                              }};
+    templateMergerFiller.clearPreviousChatgptReplies();
+}
+
+void MainWindow::displayLog(const QString &logMEssage)
+{
+    //TODO
+}
+
+void MainWindow::onApiKeyChanged(const QString &key)
+{
+    auto settings = WorkingDirectoryManager::instance()->settings();
+    if (!key.isEmpty())
+    {
+        settings->setValue(m_settingsKeyApi, key);
+    }
+    else if (settings->contains(m_settingsKeyApi))
+    {
+        settings->remove(m_settingsKeyApi);
+    }
+    _enableGenerateButtonIfValid();
 }
 
 void MainWindow::extractProductInfos()
