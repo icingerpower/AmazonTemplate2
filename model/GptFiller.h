@@ -16,15 +16,37 @@ public:
     struct SkuInfo{
         QString skuParent;
         QString colorOrig;
+        QString sizeTitleOrig;
+        QString sizeOrig;
         QString customInstructions;
         QString imageFilePath;
     };
+    static const int N_RETRY;
     static const QString PROMPT_FIRST; // First field of an SKU parent showing also an image of the product. Then, json will be sent only
     static const QString PROMPT_INTRODUCE_JSON;
     static const QString PROMPT_ASK_NOT_MANDATORY;
+    static const QString PROMPT_TEXT_START;
+    static const QString PROMPT_TEXT_END_DESCRIPTION;
+    static const QString PROMPT_TEXT_END_BULLET_POINTS;
+    static const QString PROMPT_TEXT_END_TITLE;
     explicit GptFiller(const QString &workingDir,
                        const QString &apiKey,
                        QObject *parent = nullptr);
+    void askFillingTitles(const QString &countryCodeFrom
+                          , const QString &langCodeFrom
+                          , const QHash<QString, QSet<QString> > &countryCode_sourceSkus
+                          , const QHash<QString, SkuInfo> &sku_infos
+                          , const QHash<QString, QHash<QString, QString> > &sku_langCode_varTitleInfos
+                          , QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_value
+                          , std::function<void()> callbackFinishedSuccess
+                          , std::function<void(const QString &)> callbackFinishedFailure);
+    void askFillingDescBullets(const QHash<QString, SkuInfo> &sku_infos
+                               , const QHash<QString, QHash<QString, QSet<QString>>> &countryCode_langCode_fieldIdMandatory
+                               , QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_value
+                               , const QSet<QString> &langCodes
+                               , std::function<void()> callbackFinishedSuccess
+                               , std::function<void(const QString &)> callbackFinishedFailure
+                               );
     void askFilling(const QString &countryCodeFrom
                     , const QString &langCodeFrom
                     , const QSet<QString> &fieldIdsToIgnore
@@ -32,15 +54,16 @@ public:
                     , const QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_origValue
                     , const QHash<QString, QHash<QString, QHash<QString, QStringList>>> &countryCode_langCode_fieldId_possibleValues
                     , const QHash<QString, QHash<QString, QSet<QString>>> &countryCode_langCode_fieldIdMandatory
-                    , QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &skuParent_colorOrig_langCode_fieldId_valueText // Fill this first and ChatGpt will either reply for all or by color
                     , QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_value // Then we will this using the previous
-                    , std::function<void()> callbackFinished
                     , std::function<void (int, int)> callBackProgress
+                    , std::function<void()> callbackFinishedSuccess
+                    , std::function<void(const QString &)> callbackFinishedFailure
                     );
     void askTrueMandatory(
         const QString &productType
         , const QSet<QString> &mandatordyFieldIds
-        , std::function<void(const QSet<QString> &notMandatoryFieldIds)> callbackFinished
+        , std::function<void(const QSet<QString> &notMandatoryFieldIds)> callbackFinishedSuccess
+        , std::function<void(const QString &)> callbackFinishedFailure
         );
 
 public slots:
@@ -59,9 +82,9 @@ private:
     const QHash<QString, QHash<QString, QHash<QString, QStringList>>> *m_countryCode_langCode_fieldId_possibleValues;
     const QHash<QString, QHash<QString, QSet<QString>>> *m_countryCode_langCode_fieldIdMandatory;
     const QSet<QString> *m_fieldIdsToIgnore;
-    QHash<QString, SkuInfo> m_sku_infos;
+    const QHash<QString, SkuInfo> *m_sku_infos;
+    QHash<QString, QHash<QString, QString>> m_sku_langCode_varTitleInfos;
     QMultiHash<QString, QString> m_skuParent_skus;
-    QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> *m_skuParent_colorOrig_langCode_fieldId_valueText;
     QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> *m_sku_countryCode_langCode_fieldId_value;
     QHash<QString, QHash<QString, QJsonObject>> m_skuParent_fieldId_jsonSelect;
     QHash<QString, QHash<QString, QHash<QString, QJsonObject>>> m_skuParent_colorOrig_fieldId_jsonText;
@@ -73,12 +96,26 @@ private:
     void _loadReplies();
     bool _isJsonTextDone(const QString &skuParent, const QString &colorOrig, const QString &fieldId) const;
     bool _isJsonSelectDone(const QString &skuParent, const QString &fieldId) const;
+    QString _tryToFixJson(const QString &jsonReply) const;
+    QJsonObject _getReplyObject(const QJsonDocument &jsonDoc) const;
+    bool _recordJsonTitles(const QString &skuParent
+                           , const QStringList &langCodesTo
+                           , const QString &jsonReply);
     bool _recordJsonSelect(const QString &skuParent, const QString &jsonReply);
     bool _recordJsonText(const QString &skuParent, const QString &colorOrig, const QString &jsonReply);
+    bool _recordJsonDescription(const QString &skuParent,
+                                const QString &colorOrig,
+                                const QString &langCode,
+                                const QString &jsonReply);
+    bool _recordJsonBulletPoints(const QString &skuParent,
+                                 const QString &colorOrig,
+                                 const QString &langCode,
+                                 const QString &jsonReply);
     int m_nQueries;
     std::atomic_int m_nDone;
     std::function<void (int, int)> m_callBackProgress;
-    std::function<void ()> m_callbackFinished;
+    std::function<void ()> m_callbackFinishedSuccess;
+    std::function<void (const QString &)> m_callbackFinishedFailure;
     bool m_stopAsked;
 };
 

@@ -203,11 +203,20 @@ void MainWindow::generate()
                     ui->progressBar->setValue(progress);
                 }
                 , [this](){
+                    ui->progressBar->hide();
                     QMessageBox::information(
                         this,
                         tr("Files created"),
                         tr("The template files were created successfully"));
-                    });
+                    }
+                , [this](const QString &error){
+                    ui->progressBar->hide();
+                    QMessageBox::information(
+                        this,
+                        tr("Error"),
+                        tr("The template files were not created due to an error like ChatGpt. %1").arg(error));
+                    }
+                );
         }
     }
     catch (const ExceptionTemplateError &exception)

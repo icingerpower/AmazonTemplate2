@@ -20,6 +20,8 @@ public:
     static const QSet<QString> FIELD_IDS_PUT_FIRST_VALUE;
     static const QSet<QString> FIELD_IDS_EXTRA_MANDATORY;
     static const QSet<QString> FIELD_IDS_PATTERN_REMOVE_AS_MANDATORY;
+    static const QStringList FIELD_IDS_COLOR_NAME;
+    static const QStringList FIELD_IDS_SIZE;
     enum Version{
         V01
         , V02
@@ -60,12 +62,15 @@ public:
         std::function<void(QString &logMessage)> callBackLog);
     ~TemplateMergerFiller();
     void clearPreviousChatgptReplies();
-    void fillExcelFiles(const QString &keywordFilePath,
-                        const QStringList &sourceFilePaths,
-                        const QStringList &toFillFilePaths,
-                        std::function<void(int, int)> callBackProgress,
-                        std::function<void()> callBackFinished);
+    void fillExcelFiles(const QString &keywordFilePath
+                        , const QStringList &sourceFilePaths
+                        , const QStringList &toFillFilePaths
+                        , std::function<void(int, int)> callBackProgress
+                        , std::function<void()> callBackFinishedSuccess
+                        , std::function<void(const QString &)> callbackFinishedFailure
+                        );
     void stopChatGPT();
+    QSet<QString> getLangCodesTo() const;
     // ChatGpt, for each field mandatory, will say if needed for child only or both
     // ChatGpt, will be asked value, for each lang
     // We will use QSettings for crash retake
@@ -81,10 +86,13 @@ private:
                   bool isMainFile = false);
     void _setFilePathsToFill(const QString &keywordFilePath, const QStringList &toFillFilePaths);
     void _readInfoSources(const QStringList &sourceFilePaths);
+    void _checkVarationsNotMissing();
     void _fillDataAutomatically();
     void _fillDataLeftChatGpt(
-        std::function<void(int, int)> callBackProgress,
-        std::function<void()> callBackFinished);
+        std::function<void(int, int)> callBackProgress
+        , std::function<void()> callBackFinishedSuccess
+        , std::function<void(const QString &)> callBackFinishedError
+        );
     void _createToFillXlsx();
 
     void _readKeywords(const QString &filePath);
@@ -101,11 +109,14 @@ private:
     void _preFillChildOny();
     bool _isSkuParent(const QString &sku) const;
     QHash<QString, int> _get_fieldId_index(QXlsx::Document &doc) const;
+    QHash<QString, QHash<QString, QString>> _get_sku_langCode_varTitleInfos() const;
     void _formatFieldId(QString &fieldId) const;
-    int _getIdSku(const QHash<QString, int> &fieldId_index) const;
-    int _getIdSkuParent(const QHash<QString, int> &fieldId_index) const;
-    int _getIdSkuColorName(const QHash<QString, int> &fieldId_index) const;
-    int _getIdCol(const QHash<QString, int> &fieldId_index, const QSet<QString> &possibleValues) const;
+    int _getIndColSku(const QHash<QString, int> &fieldId_index) const;
+    int _getIndColSkuParent(const QHash<QString, int> &fieldId_index) const;
+    int _getIndColColorName(const QHash<QString, int> &fieldId_index) const;
+    int _getIndColSize(const QHash<QString, int> &fieldId_index) const;
+    int _getIndColTitle(const QHash<QString, int> &fieldId_index) const;
+    int _getIndCol(const QHash<QString, int> &fieldId_index, const QStringList &possibleValues) const;
     int _getRowFieldId(Version version) const;
     void _recordValueAllVersion(QHash<QString, QVariant> &fieldId_value,
                                 const QString fieldId,
@@ -115,6 +126,7 @@ private:
     QStringList m_toFillFilePaths;
     QStringList m_skus;
     QDir m_workdingDirImages;
+    QHash<QString, QSet<QString>> m_countryCode_sourceSkus;
     QHash<QString, QHash<QString, QString>> m_countryCode_langCode_keywords;
 
     QHash<QString, QHash<QString, QHash<QString, QString>>> m_countryCode_langCode_fieldName_fieldId;
@@ -126,7 +138,6 @@ private:
     QMultiHash<QString, QString> m_skuParent_skus;
     QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> m_sku_countryCode_langCode_fieldId_origValue;
     //QHash<QString, QHash<QString, QHash<QString, QVariant>>> m_skuParent_langCode_fieldId_value;
-    QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> m_skuParent_colorOrig_langCode_fieldId_valueText;
     QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> m_sku_countryCode_langCode_fieldId_value;
 
     static FuncFiller FUNC_FILLER_COPY;

@@ -6,6 +6,8 @@
 
 #include "../common/openai/OpenAi.h"
 
+const int GptFiller::N_RETRY{5};
+
 const QString GptFiller::PROMPT_FIRST{
     "I am selling the product of the attached image in amazon (FBA). "
     "You need to help me fill the product page template. "
@@ -33,6 +35,62 @@ const QString GptFiller::PROMPT_ASK_NOT_MANDATORY{
     "[\"field1\", \"field2\"]"
 };
 
+const QString GptFiller::PROMPT_TEXT_START{
+    "I am selling the product of the attached image in amazon (FBA). "
+};
+
+const QString GptFiller::PROMPT_TEXT_END_DESCRIPTION{
+    "Write an Amazon product description of ≤1500 characters including emoji and HTML using only <p>, <b>, <ul>, <li>, <br>."
+            "\nStructure:"
+                        "\n<p> Hook: connect with the buyer and mention occasions/uses."
+        "\n<ul> 5 benefit-led bullets (each starts with a bold benefit label)."
+                               "\n<p> Close with reassurance/compatibility/care (facts only)."
+                                                 "\nTone: confident, benefit-oriented, no hype, no unverifiable superlatives."
+                                         "\nCompliance: no medical/therapeutic claims, no competitor mentions, no shipping/price promises, no guarantees unless explicitly provided."
+                                                              "\nSEO: Find SEO keywords and include them naturally once (no stuffing)."
+                                                                    "\nIf any required input is missing, omit it—do not invent."
+        "\nBefore returning, self-check: character count ≤1500; only allowed tags; bullets are benefit-led and policy-safe. Return only the HTML."
+                                           "\nPlease reply in the following language: %1"
+                        "\nReply with a json object in the following json format (one key per lang):"
+    "{\"%1\":{\"description\":\"TODO\", \"charCount\": 1255, \"policy_ok\": true, \"used_keywords\":\"TODO\"}}"
+    //",\"DE\":{\"description\":\"TODO\", \"langCode\": \"de\", \"charCount\": 1255, \"policy_ok\": true, \"used_keywords\":\"TODO\"}}"
+};
+
+const QString GptFiller::PROMPT_TEXT_END_BULLET_POINTS{
+    "\nWrite exactly FIVE Amazon \"Key Product Features\" bullet points."
+    "\nConstraints:"
+    "\n- Each bullet ≤ 250 characters (including spaces)."
+    "\n- Each bullet starts with one emoji and can't have more than one."
+    "\n- Hook: The first bullet connect with the buyer and mention occasions."
+    "\n- Start each other bullet with a short <Benefit label>: then a clear outcome (e.g., \"Easy care: Machine-wash cold\")."
+    "\n- Use concise, skimmable phrasing; sentence fragments are fine."
+    "\nTone: confident, benefit-oriented, factual; no hype or unverifiable superlatives."
+    "\nCompliance (strict): no medical/therapeutic claims; no competitor mentions; no shipping/price promises; no guarantees/warranties/certifications unless explicitly provided in inputs; avoid #1/best/100% claims."
+    "\nUse local decimal separators and units (e.g., metric for France, imperial for US) according to locale. "
+    "\nSEO: Find SEO keywords and include them naturally ONCE across the five bullets (no stuffing)."
+    "\nImage vs text: Use the image only for high-level cues. If a fact isn’t in the inputs, omit it—do not invent."
+    "\nBefore returning, SELF-CHECK for each language: exactly 5 bullets; each ≤ 200 chars; no HTML; policy-safe; keywords used at most once."
+    "\nPlease reply in the following language: %1"
+    "\nReturn ONLY the following JSON object with one key per lang (no extra text):"
+    "{\"%1\":{\"bullets\":[\"...\",\"...\",\"...\",\"...\",\"...\"], \"charCounts\":[0,0,0,0,0], \"policy_ok\": true, \"used_keywords\":[\"...\"]}}"
+    //"\"EN\":{\"bullets\":[\"...\",\"...\",\"...\",\"...\",\"...\"],, \"charCounts\":[0,0,0,0,0], \"policy_ok\": true, \"langCode\": \"en\", \"used_keywords\":[\"...\"]}}"
+};
+//, \"boolean_that_confirms_if_you_were_able_to_access_to_previous_image_from_previous_prompt\":TODO
+
+
+const QString GptFiller::PROMPT_TEXT_END_TITLE{
+    "\nPlease translate the title %1 from %2 to the following languages: %3."
+    "\nConstraints:"
+    "\nCompliance (strict): no medical/therapeutic claims; no competitor mentions; no shipping/price promises; no guarantees/warranties/certifications unless explicitly provided in inputs; avoid #1/best/100% claims."
+    "\nSEO: Find SEO keywords and include them naturally ONCE across the title."
+    "\nNo emoji and no html."
+    "\nTitles can't more than 150 characters."
+    "\nDon't include color information."
+    "\nReturn ONLY the following JSON object with one key per lang (no extra text):"
+    "{\"ES\":{\"title\":\"TODO\", \"charCount\": 144, \"policy_ok\": true, \"used_keywords\":\"TODO\"}"
+    ", {\"DE\":{\"title\":\"TODO\", \"charCount\": 144, \"policy_ok\": true, \"used_keywords\":\"TODO\"}}"
+};
+
 GptFiller::GptFiller(const QString &workingDir,
                      const QString &apiKey,
                      QObject *parent)
@@ -46,6 +104,181 @@ GptFiller::GptFiller(const QString &workingDir,
     _loadReplies();
 }
 
+void GptFiller::askFillingTitles(const QString &countryCodeFrom
+                                 , const QString &langCodeFrom
+                                 , const QHash<QString, QSet<QString>> &countryCode_sourceSkus
+                                 , const QHash<QString, SkuInfo> &sku_infos
+                                 , const QHash<QString, QHash<QString, QString>> &sku_langCode_varTitleInfos
+                                 , QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_value
+                                 , std::function<void ()> callbackFinishedSuccess
+                                 , std::function<void (const QString &)> callbackFinishedFailure)
+{
+    m_sku_langCode_varTitleInfos = sku_langCode_varTitleInfos;
+    m_sku_countryCode_langCode_fieldId_value = &sku_countryCode_langCode_fieldId_value;
+    QHash<QString, QString> skuParent_titleOrig;
+    QStringList langCodesTo;
+    for (auto itSku = sku_countryCode_langCode_fieldId_value.begin();
+         itSku != sku_countryCode_langCode_fieldId_value.end(); ++itSku)
+    {
+        for (auto itCountry = itSku.value().begin();
+             itCountry != itSku.value().end(); ++itCountry)
+        {
+            for (auto itLang = itCountry.value().begin();
+                 itLang != itCountry.value().end(); ++itLang)
+            {
+                const auto &langCode = itLang.key();
+                if (langCode != langCodeFrom && !langCodesTo.contains(langCode))
+                {
+                    langCodesTo << langCode;
+                }
+            }
+        }
+    }
+    QString langCodesToJoined{"\""};
+    langCodesToJoined += langCodesTo.join("\",\"");
+    langCodesToJoined += "\"";
+
+    m_nDone = 0;
+    m_nQueries = 0;
+    for (auto it = sku_infos.begin();
+         it != sku_infos.end(); ++it)
+    {
+        const auto &sku = it.key();
+        const auto &info = it.value();
+        const auto &skuParent = info.skuParent;
+        const QString titleFieldId{"item_name"};
+        if (!skuParent_titleOrig.contains(skuParent))
+        {
+            if (!(*m_sku_countryCode_langCode_fieldId_origValue)[sku][countryCodeFrom][langCodeFrom].contains(titleFieldId)
+                && !countryCode_sourceSkus[countryCodeFrom].contains(sku))
+            {
+                const QString &message = QObject::tr("The title is missing in the source template for the SKU: %1").arg(sku);
+                callbackFinishedFailure(message);
+            }
+            const QString &title
+                = (*m_sku_countryCode_langCode_fieldId_origValue)[sku][countryCodeFrom][langCodeFrom][titleFieldId].toString();
+            skuParent_titleOrig[skuParent] = title.split(" (")[0];
+            QString question{PROMPT_TEXT_START};
+            question += PROMPT_TEXT_END_TITLE.arg(skuParent_titleOrig[skuParent], langCodeFrom, langCodesToJoined);
+            auto image = QSharedPointer<QImage>{new QImage{info.imageFilePath}};
+            static int count = 0;
+            if (count < 2) //TEMP
+            {
+                ++count;
+                ++m_nQueries;
+                OpenAi::instance()->askQuestion(
+                    question
+                    , *image
+                    , skuParent
+                    , [this, skuParent, langCodesTo](const QString &jsonReply) -> bool{
+                        qDebug() << "REPLY ChatGpt TITLES:" << jsonReply;
+                        return _recordJsonTitles(skuParent, langCodesTo, jsonReply);
+                    }
+                    , [this, image, info, skuParent, callbackFinishedSuccess](const QString &jsonReply){
+                        ++m_nDone;
+                        if (m_nDone == m_nQueries)
+                        {
+                            callbackFinishedSuccess();
+                        }
+                    }
+                    , [this, image, info, skuParent, callbackFinishedFailure](const QString &jsonReply){
+                        ++m_nDone;
+                        callbackFinishedFailure(jsonReply);
+                    }
+                    , N_RETRY
+                    , "gpt-4.1"
+                    );
+            }
+        }
+    }
+}
+
+void GptFiller::askFillingDescBullets(
+    const QHash<QString, SkuInfo> &sku_infos
+    , const QHash<QString, QHash<QString, QSet<QString>>> &countryCode_langCode_fieldIdMandatory
+    , QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_value
+    , const QSet<QString> &langCodes
+    , std::function<void ()> callbackFinishedSuccess
+    , std::function<void (const QString &)> callbackFinishedFailure)
+{
+    m_nDone = 0;
+    m_nQueries = 0;
+    m_sku_infos = &sku_infos;
+    m_sku_countryCode_langCode_fieldId_value = &sku_countryCode_langCode_fieldId_value;
+    m_countryCode_langCode_fieldIdMandatory = &countryCode_langCode_fieldIdMandatory;
+    QHash<QString, QSet<QString>> skuParents_colorsDone;
+    for (auto it = m_sku_infos->begin();
+         it != m_sku_infos->end(); ++it)
+    {
+        const auto &sku = it.key();
+        const auto &info = it.value();
+        const auto &skuParent = info.skuParent;
+        const auto &colorOrig = info.colorOrig;
+        const auto &skuParentColor = skuParent + colorOrig;
+        if (!skuParents_colorsDone[skuParent].contains(colorOrig)
+            && skuParents_colorsDone.size() < 2)
+        {
+            for (const auto &langCode : langCodes)
+            {
+                Q_ASSERT(QFile::exists(info.imageFilePath));
+                auto image = QSharedPointer<QImage>{new QImage{info.imageFilePath}};
+                QString question{PROMPT_TEXT_START};
+                question += info.customInstructions;
+                question += PROMPT_TEXT_END_DESCRIPTION.arg(langCode);
+                ++m_nQueries;
+                OpenAi::instance()->askQuestion(
+                    question
+                    , *image
+                    , skuParentColor
+                    , [this, skuParent, colorOrig, langCode, callbackFinishedSuccess, skuParentColor](const QString &jsonReply) -> bool{
+                        return _recordJsonDescription(skuParent, colorOrig, langCode, jsonReply);
+                    }
+                    , [this, image, info, skuParent, colorOrig, langCode, callbackFinishedSuccess, callbackFinishedFailure, skuParentColor](const QString &jsonReply){
+                        qDebug() << "REPLY ChatGpt description first field id:" << jsonReply;
+                        QString questionBullets{PROMPT_TEXT_START};
+                        questionBullets += info.customInstructions;
+                        questionBullets += PROMPT_TEXT_END_BULLET_POINTS.arg(langCode);
+                        OpenAi::instance()->askQuestion(
+                            questionBullets
+                            , *image
+                            , skuParentColor
+                            , [this, skuParent, colorOrig, langCode, callbackFinishedSuccess, skuParentColor](const QString &jsonReply) -> bool {
+                                qDebug() << "REPLY ChatGpt bullet points first field id:" << jsonReply;
+                                return _recordJsonBulletPoints(skuParent, colorOrig, langCode, jsonReply);
+                            }
+                            , [this, image, skuParent, colorOrig, callbackFinishedSuccess, skuParentColor](const QString &jsonReply) {
+                                ++m_nDone;
+                                if (m_nDone == m_nQueries)
+                                {
+                                    callbackFinishedSuccess();
+                                }
+                            }
+                            , [this, image, skuParent, colorOrig, callbackFinishedFailure, skuParentColor](const QString &jsonReply) {
+                                // TODO Handle failure
+                                ++m_nDone;
+                                if (m_nDone == m_nQueries)
+                                {
+                                    callbackFinishedFailure(jsonReply);
+                                }
+                            }
+                            , N_RETRY
+                            , "gpt-4.1"
+                            );
+                    }
+                    , [this, image, skuParent, colorOrig, callbackFinishedFailure, skuParentColor](const QString &jsonReply) {
+                        qCritical () << "GptFiller::askFillingDescBullets failed on descripition:" << jsonReply;
+                        //TODO handle failure
+                        callbackFinishedFailure(jsonReply);
+                    }
+                    , N_RETRY
+                    , "gpt-4.1"
+                    //, "gpt-4.1"
+                    );
+            }
+        }
+    }
+}
+
 void GptFiller::askFilling(const QString &countryCodeFrom
                            , const QString &langCodeFrom
                            , const QSet<QString> &fieldIdsToIgnore
@@ -53,26 +286,27 @@ void GptFiller::askFilling(const QString &countryCodeFrom
                            , const QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_origValue
                            , const QHash<QString, QHash<QString, QHash<QString, QStringList>>> &countryCode_langCode_fieldId_possibleValues
                            , const QHash<QString, QHash<QString, QSet<QString>>> &countryCode_langCode_fieldIdMandatory
-                           , QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &skuParent_colorOrig_langCode_fieldId_valueText
                            , QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_value
-                           , std::function<void ()> callbackFinished
-                           , std::function<void (int, int)> callBackProgress)
+                           , std::function<void (int, int)> callBackProgress
+                           , std::function<void ()> callbackFinishedSuccess
+                           , std::function<void (const QString &)> callbackFinishedFailure
+                           )
 {
     m_callBackProgress = callBackProgress;
-    m_callbackFinished = callbackFinished;
+    m_callbackFinishedFailure = callbackFinishedFailure;
+    m_callbackFinishedSuccess = callbackFinishedSuccess;
     m_fieldIdsToIgnore = &fieldIdsToIgnore;
     m_countryCodeFrom = countryCodeFrom;
     m_langCodeFrom = langCodeFrom;
-    m_sku_infos = sku_infos;
-    for (auto it = m_sku_infos.begin();
-         it != m_sku_infos.end(); ++it)
+    m_sku_infos = &sku_infos;
+    for (auto it = m_sku_infos->begin();
+         it != m_sku_infos->end(); ++it)
     {
         m_skuParent_skus.insert(it.value().skuParent, it.key());
     }
     m_sku_countryCode_langCode_fieldId_origValue = &sku_countryCode_langCode_fieldId_origValue;
     m_countryCode_langCode_fieldId_possibleValues = &countryCode_langCode_fieldId_possibleValues;
     m_countryCode_langCode_fieldIdMandatory = &countryCode_langCode_fieldIdMandatory;
-    m_skuParent_colorOrig_langCode_fieldId_valueText = &skuParent_colorOrig_langCode_fieldId_valueText;
     m_sku_countryCode_langCode_fieldId_value = &sku_countryCode_langCode_fieldId_value;
     for (auto itCountryCode = countryCode_langCode_fieldIdMandatory.begin();
          itCountryCode != countryCode_langCode_fieldIdMandatory.end(); ++itCountryCode)
@@ -87,10 +321,9 @@ void GptFiller::askFilling(const QString &countryCodeFrom
     _processQueries();
 }
 
-void GptFiller::askTrueMandatory(
-    const QString &productType,
-    const QSet<QString> &mandatordyFieldIds,
-    std::function<void (const QSet<QString> &)> callbackFinished)
+void GptFiller::askTrueMandatory(const QString &productType,
+                                 const QSet<QString> &mandatordyFieldIds,
+                                 std::function<void (const QSet<QString> &)> callbackFinishedSuccess, std::function<void (const QString &)> callbackFinishedFailure)
 {
     QStringList mandatordyFieldIdsList{mandatordyFieldIds.begin(), mandatordyFieldIds.end()};
     std::sort(mandatordyFieldIdsList.begin(), mandatordyFieldIdsList.end());
@@ -100,20 +333,24 @@ void GptFiller::askTrueMandatory(
     OpenAi::instance()->askQuestion(
         question
         , productType
-        , [this, callbackFinished](const QString &jsonReply){
+        , [this, callbackFinishedSuccess](const QString &jsonReply) -> bool{
             qDebug() << "REPLY ChatGpt askTrueMandatory:" << jsonReply;
-            if (jsonReply.count("[") == 1 && jsonReply.count("]") == 1
-                && jsonReply.indexOf("[") < jsonReply.lastIndexOf("]"))
-            {
-                QString replyNoBrackets = jsonReply.split("[")[1].split("]")[0];
-                replyNoBrackets.replace(", ", ",");
-                replyNoBrackets.replace(" ,", ",");
-                replyNoBrackets.replace("\"", "");
-                const auto &fieldIds = replyNoBrackets.split(",");
-                QSet<QString> notMandatoryFieldIds{fieldIds.begin(), fieldIds.end()};
-                callbackFinished(notMandatoryFieldIds);
-            }
+            return jsonReply.count("[") == 1 && jsonReply.count("]") == 1
+                   && jsonReply.indexOf("[") < jsonReply.lastIndexOf("]");
         }
+        , [this, callbackFinishedSuccess](const QString &jsonReply){
+            QString replyNoBrackets = jsonReply.split("[")[1].split("]")[0];
+            replyNoBrackets.replace(", ", ",");
+            replyNoBrackets.replace(" ,", ",");
+            replyNoBrackets.replace("\"", "");
+            const auto &fieldIds = replyNoBrackets.split(",");
+            QSet<QString> notMandatoryFieldIds{fieldIds.begin(), fieldIds.end()};
+            callbackFinishedSuccess(notMandatoryFieldIds);
+        }
+        , [this](const QString &jsonReply){
+            //TODO handle failure
+        }
+        , N_RETRY
         , "gpt-4.1"); // We take a better model as this question is important
 }
 
@@ -134,15 +371,15 @@ void GptFiller::_prepareQueries()
     QSet<QString> skuParentsDone;
     QHash<QString, QSet<QString>> skuParents_colorsDone;
     m_nQueries = 0;
-    static QSet<QString> fieldIds1;
-    static QSet<QString> fieldIds2;
+    static QSet<QString> countFieldIds1;
+    static QSet<QString> countFieldIds2;
     for (auto itSku = m_sku_countryCode_langCode_fieldId_value->begin();
          itSku != m_sku_countryCode_langCode_fieldId_value->end(); ++itSku)
     {
         const auto &sku = itSku.key();
-        const auto &skuParent = m_sku_infos[sku].skuParent;
-        const auto &colorOrig = m_sku_infos[sku].colorOrig;
-        //const auto &customInstructions = m_sku_infos[sku].customInstructions;
+        const auto &skuParent = (*m_sku_infos)[sku].skuParent;
+        const auto &colorOrig = (*m_sku_infos)[sku].colorOrig;
+        //const auto &customInstructions = (*m_sku_infos)[sku].customInstructions;
         for (auto itCountryCode = m_countryCode_langCode_fieldIdMandatory->begin();
              itCountryCode != m_countryCode_langCode_fieldIdMandatory->end(); ++itCountryCode)
         {
@@ -158,9 +395,9 @@ void GptFiller::_prepareQueries()
                     {
                         if ((*m_countryCode_langCode_fieldId_possibleValues)[countryCodeTo][langCodeTo].contains(fieldId))
                         { // Value to select
-                            if (fieldIds1.size() < 3 || fieldIds1.contains(sku+fieldId))
+                            if (countFieldIds1.size() < 3 || countFieldIds1.contains(sku+fieldId))
                             {
-                                fieldIds1.insert(sku+fieldId);
+                                countFieldIds1.insert(sku+fieldId);
                             if (!skuParentsDone.contains(skuParent)
                                 && !_isJsonSelectDone(skuParent, fieldId))
                             {
@@ -210,9 +447,9 @@ void GptFiller::_prepareQueries()
                         }
                         else
                         { // Creative text
-                            if (fieldIds2.size() < 3 || fieldIds2.contains(sku+fieldId))
+                            if (countFieldIds2.size() < 3 || countFieldIds2.contains(sku+fieldId))
                             {
-                                fieldIds2.insert(sku+fieldId);
+                                countFieldIds2.insert(sku+fieldId);
                             if (!skuParents_colorsDone[skuParent].contains(colorOrig)
                                 && !_isJsonTextDone(skuParent, colorOrig, fieldId))
                             {
@@ -304,11 +541,19 @@ void GptFiller::_prepareQueries()
 
 void GptFiller::_processQueries()
 {
+    m_nDone = 0;
+    auto updateAfterQueryProcessed = [this](){
+        ++m_nDone;
+        m_callBackProgress(m_nDone, m_nQueries);
+        if (m_nDone == m_nQueries)
+        {
+            m_callbackFinishedSuccess();
+        }
+    };
     for (auto itSkuParent = m_skuParent_fieldId_jsonSelect.begin();
          itSkuParent != m_skuParent_fieldId_jsonSelect.end(); ++itSkuParent)
     {
         const QString &skuParent = itSkuParent.key();
-        bool first = true;
         for (auto itFieldId_jsonSelect = itSkuParent.value().begin();
              itFieldId_jsonSelect != itSkuParent.value().end(); ++itFieldId_jsonSelect)
         {
@@ -316,44 +561,39 @@ void GptFiller::_processQueries()
             {
                 return;
             }
-            QString question;
+            QString question{PROMPT_FIRST};
             const QString &firstSku = m_skuParent_skus.value(skuParent);
-            const auto &firstInfo = m_sku_infos[firstSku];
-            if (first)
-            {
-                question += PROMPT_FIRST;
-                question += "\n";
-                question += firstInfo.customInstructions;
-                question += "\n";
-                question += PROMPT_INTRODUCE_JSON;
-                question += "\n";
-            }
+            const auto &firstInfo = (*m_sku_infos)[firstSku];
+            question += "\n";
+            question += firstInfo.customInstructions;
+            question += "\n";
+            question += PROMPT_INTRODUCE_JSON;
+            question += "\n";
             const auto &jsonObject = itFieldId_jsonSelect.value();
             const QString &json = QString::fromUtf8(QJsonDocument(jsonObject).toJson(QJsonDocument::Compact));
             question += json;
             qDebug() << "Asking ChatGpt field id:" << itFieldId_jsonSelect.key() << " - " << question;
-            if (first)
-            {
-                QImage *image = new QImage{firstInfo.imageFilePath};
-                OpenAi::instance()->askQuestion(
-                    question,
-                    skuParent,
-                    [this, image, skuParent](const QString &jsonReply){
-                        delete image;
-                        qDebug() << "REPLY ChatGpt select first field id:" << jsonReply;
-                        _recordJsonSelect(skuParent, jsonReply);
-                    }); //TODO I stop here + needs to ask ChatGpt about frequency
-            }
-            else
-            {
-                OpenAi::instance()->askQuestion(
-                    question,
-                    skuParent,
-                    [this, skuParent](const QString &jsonReply){
-                        qDebug() << "REPLY ChatGpt select second field id:" << jsonReply;
-                        _recordJsonSelect(skuParent, jsonReply);
-                    });
-            }
+            QImage *image = new QImage{firstInfo.imageFilePath};
+            OpenAi::instance()->askQuestion(
+                question
+                , *image
+                , skuParent
+                , [this, skuParent](const QString &jsonReply) -> bool{
+                    qDebug() << "REPLY ChatGpt SELECT field id:" << jsonReply;
+                    return _recordJsonSelect(skuParent, jsonReply);
+                }
+                , [this, image, updateAfterQueryProcessed](const QString &jsonReply){
+                    delete image;
+                    updateAfterQueryProcessed();
+                }
+                , [this, image, skuParent, updateAfterQueryProcessed](const QString &jsonReply){
+                    qDebug() << "REPLY FAILURE ChatGpt SELECT field id:"
+                             << skuParent << "-" << jsonReply;
+                    delete image;
+                    updateAfterQueryProcessed();
+                }
+                , N_RETRY
+                );
         }
     }
     for (auto itSkuParent = m_skuParent_colorOrig_fieldId_jsonText.begin();
@@ -365,7 +605,6 @@ void GptFiller::_processQueries()
         {
             const auto &colorOrig = itColorOrig.key();
             const auto &skuParentColor = skuParent + colorOrig;
-            bool first = true;
             for (auto itFieldId_jsonText = itColorOrig.value().begin();
                  itFieldId_jsonText != itColorOrig.value().end(); ++itFieldId_jsonText)
             {
@@ -374,43 +613,40 @@ void GptFiller::_processQueries()
                     return;
                 }
                 const QString &firstSku = m_skuParent_skus.value(skuParent);
-                const auto &firstInfo = m_sku_infos[firstSku];
-                QString question;
-                if (first)
-                {
-                    question += PROMPT_FIRST;
-                    question += "\n";
-                    question += firstInfo.customInstructions;
-                    question += "\n";
-                    question += PROMPT_INTRODUCE_JSON;
-                    question += "\n";
-                }
+                const auto &firstInfo = (*m_sku_infos)[firstSku];
+                QString question{PROMPT_FIRST};
+                question += PROMPT_FIRST;
+                question += "\n";
+                question += firstInfo.customInstructions;
+                question += "\n";
+                question += PROMPT_INTRODUCE_JSON;
+                question += "\n";
                 const auto &jsonObject = itFieldId_jsonText.value();
                 const QString &json = QString::fromUtf8(QJsonDocument(jsonObject).toJson(QJsonDocument::Compact));
                 question += json;
                 qDebug() << "Asking ChatGpt field id:" << itFieldId_jsonText.key() << " - " << question;
-                if (first)
-                {
-                    QImage *image = new QImage{firstInfo.imageFilePath};
-                    OpenAi::instance()->askQuestion(
-                        question,
-                        skuParentColor,
-                        [this, image, colorOrig, skuParent](const QString &jsonReply){
-                            delete image;
-                            qDebug() << "REPLY text first ChatGpt field id:" << jsonReply;
-                            _recordJsonText(skuParent, colorOrig, jsonReply);
-                        }); //TODO I stop here + needs to ask ChatGpt about frequency
-                }
-                else
-                {
-                    OpenAi::instance()->askQuestion(
-                        question,
-                        skuParentColor,
-                        [this, skuParent, colorOrig](const QString &jsonReply){
-                            qDebug() << "REPLY text second ChatGpt field id:" << jsonReply;
-                            _recordJsonText(skuParent, colorOrig, jsonReply);
-                        });
-                }
+                QImage *image = new QImage{firstInfo.imageFilePath};
+                OpenAi::instance()->askQuestion(
+                    question
+                    , *image
+                    , skuParentColor
+                    , [this, colorOrig, skuParent](
+                        const QString &jsonReply) -> bool{
+                        qDebug() << "REPLY ChatGpt TEXT field id:" << jsonReply;
+                        return _recordJsonText(skuParent, colorOrig, jsonReply);
+                    }
+                    , [this, image, updateAfterQueryProcessed](const QString &jsonReply){
+                        delete image;
+                        updateAfterQueryProcessed();
+                    }
+                    , [this, image, skuParent, updateAfterQueryProcessed](const QString &jsonReply){
+                        qDebug() << "REPLY FAILURE ChatGpt TEXT first field id:"
+                                 << skuParent << "-" << jsonReply;
+                        delete image;
+                        updateAfterQueryProcessed();
+                    }
+                    , N_RETRY
+                    );
             }
         }
     }
@@ -418,13 +654,12 @@ void GptFiller::_processQueries()
 
 bool GptFiller::_recordJsonSelect(const QString &skuParent, const QString &jsonReply)
 {
-    ++m_nDone;
-    m_callBackProgress(m_nDone, m_nQueries);
-    const QJsonDocument &jsonDoc = QJsonDocument::fromJson(jsonReply.toUtf8());
+    const QJsonDocument &jsonDoc = QJsonDocument::fromJson(
+        _tryToFixJson(jsonReply).toUtf8());
     bool correctReply = true;
     if (jsonDoc.isObject())
     {
-        const QJsonObject &reply = jsonDoc.object();
+        const QJsonObject &reply = _getReplyObject(jsonDoc);
         if (reply.contains("values")
             && reply.contains("fieldId"))
         {
@@ -461,10 +696,6 @@ bool GptFiller::_recordJsonSelect(const QString &skuParent, const QString &jsonR
     {
         correctReply = false;
     }
-    if (m_nDone == m_nQueries)
-    {
-        m_callbackFinished();
-    }
     return correctReply;
 }
 
@@ -472,13 +703,11 @@ bool GptFiller::_recordJsonText(const QString &skuParent,
                                 const QString &colorOrig,
                                 const QString &jsonReply)
 {
-    ++m_nDone;
-    m_callBackProgress(m_nDone, m_nQueries);
-    const QJsonDocument &jsonDoc = QJsonDocument::fromJson(jsonReply.toUtf8());
+    const QJsonDocument &jsonDoc = QJsonDocument::fromJson(_tryToFixJson(jsonReply).toUtf8());
     bool correctReply = true;
     if (jsonDoc.isObject())
     {
-        const QJsonObject &reply = jsonDoc.object();
+        const QJsonObject &reply = _getReplyObject(jsonDoc);
         if (reply.contains("values")
             && reply.contains("fieldId")
             && reply.contains("colorOrig"))
@@ -522,9 +751,247 @@ bool GptFiller::_recordJsonText(const QString &skuParent,
     {
         correctReply = false;
     }
-    if (m_nDone == m_nQueries)
+    return correctReply;
+}
+
+bool GptFiller::_recordJsonTitles(
+    const QString &skuParent, const QStringList &langCodesTo, const QString &jsonReply)
+{
+    const QJsonDocument &jsonDoc = QJsonDocument::fromJson(_tryToFixJson(jsonReply).toUtf8());
+    bool correctReply = true;
+    if (jsonDoc.isObject())
     {
-        m_callbackFinished();
+        QHash<QString, QString> langCode_title;
+        const QJsonObject &reply = _getReplyObject(jsonDoc);
+        for (auto it = reply.begin();
+             it != reply.end(); ++it)
+        {
+            const auto &langCode = it.key().toUpper();
+            const auto &descObject = it.value().toObject();
+            if (descObject.contains("title"))
+            {
+                langCode_title[langCode] = descObject["title"].toString();
+            }
+            else
+            {
+                correctReply = false;
+            }
+        }
+        if (correctReply)
+        {
+            QSet<QString> langCodesDone;
+            for (auto itSku = m_sku_countryCode_langCode_fieldId_value->begin();
+                 itSku != m_sku_countryCode_langCode_fieldId_value->end(); ++itSku)
+            {
+                const auto &sku = itSku.key();
+                const auto &infos = (*m_sku_infos)[sku];
+                if (infos.skuParent == skuParent)
+                {
+                    auto &countryCode_langCode_fieldId_value = itSku.value();
+                    correctReply = false;
+                    for (auto itCountryCode = m_countryCode_langCode_fieldIdMandatory->begin();
+                         itCountryCode != m_countryCode_langCode_fieldIdMandatory->end(); ++itCountryCode)
+                    {
+                        const auto &countryCode = itCountryCode.key();
+                        for (auto itLangCode = itCountryCode.value().begin();
+                             itLangCode != itCountryCode.value().end(); ++itLangCode)
+                        {
+                            const auto &langCode = itLangCode.key();
+                            if (langCode_title.contains(langCode))
+                            {
+                                langCodesDone.insert(langCode);
+                                correctReply = true;
+                                static const QSet<QString> titleFieldId{
+                                    "item_name"
+                                    , "item_name#1.value"
+                                };
+                                for (const auto &fieldId : titleFieldId)
+                                {
+                                    const auto &title = langCode_title[langCode] + " " + m_sku_langCode_varTitleInfos[sku][langCode];
+                                    if (!countryCode_langCode_fieldId_value[countryCode][langCode].contains(fieldId))
+                                    {
+                                        countryCode_langCode_fieldId_value[countryCode][langCode][fieldId]
+                                            = title;
+                                        Q_ASSERT(!(*m_sku_countryCode_langCode_fieldId_value)[sku][countryCode][langCode][fieldId].toString().isEmpty());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (langCodesDone.size() < langCodesTo.size())
+            {
+                correctReply = false;
+            }
+        }
+    }
+    else
+    {
+        correctReply = false;
+    }
+    return correctReply;
+}
+
+
+
+bool GptFiller::_recordJsonDescription(
+    const QString &skuParent,
+    const QString &colorOrig,
+    const QString &langCodeDone,
+    const QString &jsonReply)
+{
+    const QJsonDocument &jsonDoc = QJsonDocument::fromJson(_tryToFixJson(jsonReply).toUtf8());
+    bool correctReply = true;
+    if (jsonDoc.isObject())
+    {
+        QHash<QString, QString> langCode_description;
+        const QJsonObject &reply = _getReplyObject(jsonDoc);
+        for (auto it = reply.begin();
+             it != reply.end(); ++it)
+        {
+            const auto &langCode = it.key().toUpper();
+            const auto &descObject = it.value().toObject();
+            if (descObject.contains("description"))
+            {
+                langCode_description[langCode] = descObject["description"].toString();
+            }
+            else
+            {
+                correctReply = false;
+            }
+        }
+        if (correctReply)
+        {
+            for (auto itSku = m_sku_countryCode_langCode_fieldId_value->begin();
+                 itSku != m_sku_countryCode_langCode_fieldId_value->end(); ++itSku)
+            {
+                const auto &sku = itSku.key();
+                const auto &infos = (*m_sku_infos)[sku];
+                if (infos.skuParent == skuParent && infos.colorOrig == colorOrig)
+                {
+                    auto &countryCode_langCode_fieldId_value = itSku.value();
+                    correctReply = false;
+                    for (auto itCountryCode = m_countryCode_langCode_fieldIdMandatory->begin();
+                         itCountryCode != m_countryCode_langCode_fieldIdMandatory->end(); ++itCountryCode)
+                    {
+                        const auto &countryCode = itCountryCode.key();
+                        for (auto itLangCode = itCountryCode.value().begin();
+                             itLangCode != itCountryCode.value().end(); ++itLangCode)
+                        {
+                            const auto &curLangCode = itLangCode.key();
+                            if (curLangCode == langCodeDone && langCode_description.contains(langCodeDone))
+                            {
+                                correctReply = true;
+                                static const QSet<QString> descrFieldId{
+                                    "product_description"
+                                    , "product_description#1.value"
+                                };
+                                for (const auto &fieldId : descrFieldId)
+                                {
+                                    countryCode_langCode_fieldId_value[countryCode][langCodeDone][fieldId]
+                                        = langCode_description[langCodeDone];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        correctReply = false;
+    }
+    return correctReply;
+}
+
+bool GptFiller::_recordJsonBulletPoints(
+    const QString &skuParent,
+    const QString &colorOrig,
+    const QString &langCodeDone,
+    const QString &jsonReply)
+{
+    // TODO title translation + langCodes in question
+    const QJsonDocument &jsonDoc = QJsonDocument::fromJson(_tryToFixJson(jsonReply).toUtf8());
+    bool correctReply = true;
+    if (jsonDoc.isObject())
+    {
+        QHash<QString, QStringList> langCode_bulletPoints;
+        const QJsonObject &reply = _getReplyObject(jsonDoc);
+        for (auto it = reply.begin();
+             it != reply.end(); ++it)
+        {
+            const auto &langCode = it.key().toUpper();
+            const auto &descObject = it.value().toObject();
+            if (descObject.contains("bullets") && descObject["bullets"].isArray())
+            {
+                const QJsonArray &arrayBullets = descObject["bullets"].toArray();
+                if (arrayBullets.size() > 4)
+                {
+                    for (auto &jsonValue : arrayBullets)
+                    {
+                        langCode_bulletPoints[langCode] << jsonValue.toString();
+                    }
+                }
+                else
+                {
+                    correctReply = false;
+                }
+            }
+            else
+            {
+                correctReply = false;
+            }
+        }
+        if (correctReply)
+        {
+            for (auto itSku = m_sku_countryCode_langCode_fieldId_value->begin();
+                 itSku != m_sku_countryCode_langCode_fieldId_value->end(); ++itSku)
+            {
+                const auto &sku = itSku.key();
+                const auto &infos = (*m_sku_infos)[sku];
+                if (infos.skuParent == skuParent && infos.colorOrig == colorOrig)
+                {
+                    correctReply = false;
+                    auto &countryCode_langCode_fieldId_value = itSku.value();
+                    for (auto itCountryCode = m_countryCode_langCode_fieldIdMandatory->begin();
+                         itCountryCode != m_countryCode_langCode_fieldIdMandatory->end(); ++itCountryCode)
+                    {
+                        const auto &countryCode = itCountryCode.key();
+                        for (auto itLangCode = itCountryCode.value().begin();
+                             itLangCode != itCountryCode.value().end(); ++itLangCode)
+                        {
+                            const auto &curLangCode = itLangCode.key();
+                            if (curLangCode == langCodeDone
+                                && langCode_bulletPoints.contains(langCodeDone))
+                            {
+                                correctReply = true;
+                                auto itLangCode = itCountryCode.value().find(langCodeDone);
+                                auto &fieldId_value = itLangCode.value();
+                                static const QSet<QString> bulletPatternFieldIds{
+                                    "bullet_point#%1.value"
+                                    , "bullet_point%1"
+                                };
+                                for (int i=1; i<=5; ++i)
+                                {
+                                    for (const auto &bulletPatternFieldId : bulletPatternFieldIds)
+                                    {
+                                        const auto &bulletFieldId = bulletPatternFieldId.arg(i);
+                                        countryCode_langCode_fieldId_value[countryCode][langCodeDone][bulletFieldId]
+                                            = langCode_bulletPoints[langCodeDone][i-1];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        correctReply = false;
     }
     return correctReply;
 }
@@ -643,6 +1110,35 @@ bool GptFiller::_isJsonSelectDone(const QString &skuParent, const QString &field
     && m_skuParent_fieldId_jsonSelectReply[skuParent].contains(fieldId);
 }
 
+QString GptFiller::_tryToFixJson(const QString &jsonReply) const
+{
+    if (jsonReply.startsWith("```json\n"))
+    {
+        int indexFirst = jsonReply.indexOf("\n");
+        int indexlast = jsonReply.indexOf("\n```");
+        int length = indexlast - indexFirst - 1;
+        return jsonReply.mid(indexFirst+1, length);
+    }
+    else if (jsonReply.contains("\",\"charCounts"))
+    {
+        return QString{jsonReply}.replace("\",\"charCounts", "\"],\"charCounts");
+    }
+    return jsonReply;
+}
+
+QJsonObject GptFiller::_getReplyObject(const QJsonDocument &jsonDoc) const
+{
+    QJsonObject reply = jsonDoc.object();
+    if (reply.contains("reply") && reply["reply"].isObject())
+    {
+        return reply["reply"].toObject();
+    }
+    else if (reply.contains("return") && reply["return"].isObject())
+    {
+        return reply["return"].toObject();
+    }
+    return reply;
+}
 
 
 
