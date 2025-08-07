@@ -1221,7 +1221,7 @@ void TemplateMergerFiller::_setFilePathsToFill(const QString &keywordFilePath,
         {
             QStringList skus;
             QHash<QString, GptFiller::SkuInfo> sku_skuInfos;
-            _readSkus(document, countryCodeTo, langCodeTo, skus, sku_skuInfos, m_sku_countryCode_langCode_fieldId_value, true);
+            _readSkus(document, countryCodeTo, langCodeTo, skus, sku_skuInfos, m_sku_countryCode_langCode_fieldId_value);
         }
         _readFields(document, countryCodeTo, langCodeTo);
         _readMandatory(document, countryCodeTo, langCodeTo);

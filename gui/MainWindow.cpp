@@ -29,10 +29,6 @@ MainWindow::MainWindow(QWidget *parent)
     m_settingsKeyApi = "MainWindowKey";
     m_templateMergerFiller = nullptr;
     auto settings = WorkingDirectoryManager::instance()->settings();
-    if (settings->contains(m_settingsKeyExtraInfos))
-    {
-        ui->textEditExtraInfos->setText(settings->value(m_settingsKeyExtraInfos).toString());
-    }
     if (settings->contains(m_settingsKeyApi))
     {
         auto key = settings->value(m_settingsKeyApi).toString();
@@ -47,7 +43,7 @@ MainWindow::~MainWindow()
     delete m_templateMergerFiller;
 }
 
-QSharedPointer<QSettings> MainWindow::settings() const
+QSharedPointer<QSettings> MainWindow::settingsFolder() const
 {
     return QSharedPointer<QSettings>{new QSettings{m_settingsFilePath, QSettings::IniFormat}};
 }
@@ -78,8 +74,19 @@ void MainWindow::browseSourceMain()
         QFileDialog::DontUseNativeDialog);
     if (!filePath.isEmpty())
     {
-        ui->buttonExtractProductInfos->setEnabled(true);
         m_workingDir = QFileInfo{filePath}.dir();
+        m_settingsFilePath = m_workingDir.absoluteFilePath("settings.ini");
+        auto settingsDir = settingsFolder();
+        if (settingsDir->contains(m_settingsKeyExtraInfos))
+        {
+            ui->textEditExtraInfos->setText(
+                        settingsDir->value(m_settingsKeyExtraInfos).toString());
+        }
+        else
+        {
+            ui->textEditExtraInfos->clear();
+        }
+        ui->buttonExtractProductInfos->setEnabled(true);
         const auto &workingDirPath = m_workingDir.path();
         settings.setValue(key, workingDirPath);
         ui->lineEditTo->setText(filePath);
@@ -135,19 +142,22 @@ void MainWindow::_connectslots()
             &QTextEdit::textChanged,
             this,
             [this](){
-                static QDateTime nextDateTime = QDateTime::currentDateTime().addSecs(-1);
-                const QDateTime &currentDateTime = QDateTime::currentDateTime();
-                if (nextDateTime.secsTo(currentDateTime) > 0)
-                {
-                    int nSecs = 3;
-                    nextDateTime = currentDateTime.addSecs(nSecs);
-                    QTimer::singleShot(nSecs * 1000 + 20, this, [this]{
-                        auto settings = WorkingDirectoryManager::instance()->settings();
-                        settings->setValue(m_settingsKeyExtraInfos,
-                                           ui->textEditExtraInfos->toPlainText());
-                    });
-                }
-            });
+        if (!ui->lineEditTo->text().isEmpty())
+        {
+            static QDateTime nextDateTime = QDateTime::currentDateTime().addSecs(-1);
+            const QDateTime &currentDateTime = QDateTime::currentDateTime();
+            if (nextDateTime.secsTo(currentDateTime) > 0)
+            {
+                int nSecs = 3;
+                nextDateTime = currentDateTime.addSecs(nSecs);
+                QTimer::singleShot(nSecs * 1000 + 20, this, [this]{
+                    auto settingsDir = settingsFolder();
+                    settingsDir->setValue(m_settingsKeyExtraInfos,
+                                          ui->textEditExtraInfos->toPlainText());
+                });
+            }
+        }
+    });
 }
 
 void MainWindow::_enableGenerateButtonIfValid()

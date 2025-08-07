@@ -26,7 +26,7 @@ const QString GptFiller::PROMPT_INTRODUCE_JSON{
 };
 
 const QString GptFiller::PROMPT_ASK_NOT_MANDATORY{
-    "I am create product page on amazon with a page template."
+    "I am creating product pages on amazon with a page template."
     " The product category is %1. Can you tell me,"
     " among those attributes marked as mandatory,"
     " which ones are in fact not mandatory (Usually "
@@ -252,6 +252,7 @@ void GptFiller::askFillingDescBullets(
                         auto image = QSharedPointer<QImage>{new QImage{info.imageFilePath}};
                         QString question{PROMPT_TEXT_START};
                         question += info.customInstructions;
+                        Q_ASSERT(QFile::exists(info.imageFilePath));
                         question += PROMPT_TEXT_END_DESCRIPTION.arg(langCode);
                         ++m_nQueries;
                         if (m_stopAsked)
@@ -263,6 +264,7 @@ void GptFiller::askFillingDescBullets(
                                     , *image
                                     , skuParentColor
                                     , [this, skuParent, colorOrig, langCode, callbackFinishedSuccess, skuParentColor](const QString &jsonReply) -> bool{
+                            qDebug () << "GptFiller::askFillingDescBullets on description:" << jsonReply;
                             return _recordJsonDescription(skuParent, colorOrig, langCode, jsonReply);
                         }
                         , [this, image, info, skuParent, colorOrig, langCode, callbackFinishedSuccess, callbackFinishedFailure, skuParentColor](const QString &jsonReply){
@@ -321,7 +323,7 @@ void GptFiller::askFillingDescBullets(
                             }
                         }
                         , N_RETRY
-                        , "gpt-4.1"
+                        , "gpt-5"
                         );
                     }
                 }
@@ -1011,7 +1013,7 @@ bool GptFiller::_recordJsonDescription(
             {
                 langCode_description[langCode] = descObject["description"].toString();
             }
-            else if (langCode == "LANGOCDE")
+            else
             {
                 correctReply = false;
             }

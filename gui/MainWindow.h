@@ -22,7 +22,7 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-    QSharedPointer<QSettings> settings() const;
+    QSharedPointer<QSettings> settingsFolder() const;
     FileModelSources *getFileModelSources() const;
     FileModelToFill *getFileModelToFill() const;
 
