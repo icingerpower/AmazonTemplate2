@@ -239,7 +239,6 @@ void GptFiller::askFillingDescBullets(
         const auto &colorOrig = info.colorOrig;
         const auto &skuParentColor = skuParent + colorOrig;
         if (!skuParents_colorsDone[skuParent].contains(colorOrig))
-            //&& skuParents_colorsDone.size() < 2) //TEMP
         {
             for (const auto &langCode : langCodes)
             {
@@ -1019,7 +1018,6 @@ bool GptFiller::_recordJsonBulletPoints(
     const QString &langCodeDone,
     const QString &jsonReply)
 {
-    // TODO title translation + langCodes in question
     const QJsonDocument &jsonDoc = QJsonDocument::fromJson(_tryToFixJson(jsonReply).toUtf8());
     bool correctReply = true;
     if (jsonDoc.isObject())
