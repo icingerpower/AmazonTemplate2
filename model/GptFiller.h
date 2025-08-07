@@ -100,6 +100,7 @@ private:
     QHash<QString, QHash<QString, QJsonObject>> m_skuParentColor_langCode_jsonReplyBullets;
     void _prepareQueries();
     void _processQueries();
+    bool _isDescBulletDone(const QString &sku, const QString &langCode) const;
     bool _reloadJsonText(const QString &skuParent, const QString &colorOrig, const QString &fieldId);
     bool _reloadJsonSelect(const QString &skuParent, const QString &fieldId);
     bool _reloadJsonTitles(const QString &skuParent, const QStringList &langCodesTo, const QString &langCodesToJoined);

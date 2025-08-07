@@ -240,26 +240,29 @@ void GptFiller::askFillingDescBullets(
         const auto &skuParentColor = skuParent + colorOrig;
         if (!skuParents_colorsDone[skuParent].contains(colorOrig))
         {
+            skuParents_colorsDone[skuParent].insert(colorOrig);
             for (const auto &langCode : langCodes)
             {
-                if (!_reloadJsonDesc(skuParent, colorOrig, langCode)
-                    || !_reloadJsonBullets(skuParentColor, langCode))
+                if (!_isDescBulletDone(sku, langCode))
                 {
-                    Q_ASSERT(QFile::exists(info.imageFilePath));
-                    auto image = QSharedPointer<QImage>{new QImage{info.imageFilePath}};
-                    QString question{PROMPT_TEXT_START};
-                    question += info.customInstructions;
-                    question += PROMPT_TEXT_END_DESCRIPTION.arg(langCode);
-                    ++m_nQueries;
-                    if (m_stopAsked)
+                    if (!_reloadJsonDesc(skuParent, colorOrig, langCode)
+                            || !_reloadJsonBullets(skuParentColor, langCode))
                     {
-                        return;
-                    }
-                    OpenAi::instance()->askQuestion(
-                        question
-                        , *image
-                        , skuParentColor
-                        , [this, skuParent, colorOrig, langCode, callbackFinishedSuccess, skuParentColor](const QString &jsonReply) -> bool{
+                        Q_ASSERT(QFile::exists(info.imageFilePath));
+                        auto image = QSharedPointer<QImage>{new QImage{info.imageFilePath}};
+                        QString question{PROMPT_TEXT_START};
+                        question += info.customInstructions;
+                        question += PROMPT_TEXT_END_DESCRIPTION.arg(langCode);
+                        ++m_nQueries;
+                        if (m_stopAsked)
+                        {
+                            return;
+                        }
+                        OpenAi::instance()->askQuestion(
+                                    question
+                                    , *image
+                                    , skuParentColor
+                                    , [this, skuParent, colorOrig, langCode, callbackFinishedSuccess, skuParentColor](const QString &jsonReply) -> bool{
                             return _recordJsonDescription(skuParent, colorOrig, langCode, jsonReply);
                         }
                         , [this, image, info, skuParent, colorOrig, langCode, callbackFinishedSuccess, callbackFinishedFailure, skuParentColor](const QString &jsonReply){
@@ -277,36 +280,36 @@ void GptFiller::askFillingDescBullets(
                             questionBullets += info.customInstructions;
                             questionBullets += PROMPT_TEXT_END_BULLET_POINTS.arg(langCode);
                             OpenAi::instance()->askQuestion(
-                                questionBullets
-                                , *image
-                                , skuParentColor
-                                , [this, skuParent, colorOrig, langCode, callbackFinishedSuccess, skuParentColor](const QString &jsonReply) -> bool {
-                                    qDebug() << "REPLY ChatGpt bullet points first field id:" << jsonReply;
-                                    return _recordJsonBulletPoints(skuParent, colorOrig, langCode, jsonReply);
+                                        questionBullets
+                                        , *image
+                                        , skuParentColor
+                                        , [this, skuParent, colorOrig, langCode, callbackFinishedSuccess, skuParentColor](const QString &jsonReply) -> bool {
+                                qDebug() << "REPLY ChatGpt bullet points first field id:" << jsonReply;
+                                return _recordJsonBulletPoints(skuParent, colorOrig, langCode, jsonReply);
+                            }
+                            , [this, image, skuParent, colorOrig, callbackFinishedSuccess, langCode, skuParentColor](const QString &jsonReply) {
+                                auto replyObject = _getReplyObject(jsonReply);
+                                replyObject["skuParentColor"] = skuParent + colorOrig;
+                                replyObject["langCode"] = langCode;
+                                m_skuParentColor_langCode_jsonReplyBullets[skuParentColor][langCode] = replyObject;
+                                _saveReplies();
+                                ++m_nDone;
+                                if (m_nDone == m_nQueries)
+                                {
+                                    callbackFinishedSuccess();
                                 }
-                                , [this, image, skuParent, colorOrig, callbackFinishedSuccess, langCode, skuParentColor](const QString &jsonReply) {
-                                    auto replyObject = _getReplyObject(jsonReply);
-                                    replyObject["skuParentColor"] = skuParent + colorOrig;
-                                    replyObject["langCode"] = langCode;
-                                    m_skuParentColor_langCode_jsonReplyBullets[skuParentColor][langCode] = replyObject;
-                                    _saveReplies();
-                                    ++m_nDone;
-                                    if (m_nDone == m_nQueries)
-                                    {
-                                        callbackFinishedSuccess();
-                                    }
+                            }
+                            , [this, image, skuParent, colorOrig, callbackFinishedFailure, skuParentColor](const QString &jsonReply) {
+                                ++m_nDone;
+                                if (m_nDone == m_nQueries)
+                                {
+                                    askStop();
+                                    callbackFinishedFailure(jsonReply);
                                 }
-                                , [this, image, skuParent, colorOrig, callbackFinishedFailure, skuParentColor](const QString &jsonReply) {
-                                    ++m_nDone;
-                                    if (m_nDone == m_nQueries)
-                                    {
-                                        askStop();
-                                        callbackFinishedFailure(jsonReply);
-                                    }
-                                }
-                                , N_RETRY
-                                , "gpt-4.1"
-                                );
+                            }
+                            , N_RETRY
+                            , "gpt-4.1"
+                            );
                         }
                         , [this, image, skuParent, colorOrig, callbackFinishedFailure, skuParentColor](const QString &jsonReply) {
                             qCritical () << "GptFiller::askFillingDescBullets failed on descripition:" << jsonReply;
@@ -320,6 +323,7 @@ void GptFiller::askFillingDescBullets(
                         , N_RETRY
                         , "gpt-4.1"
                         );
+                    }
                 }
             }
         }
@@ -711,6 +715,48 @@ void GptFiller::_processQueries()
             }
         }
     }
+}
+
+bool GptFiller::_isDescBulletDone(const QString &sku, const QString &langCode) const
+{
+    for (auto itSku = m_sku_countryCode_langCode_fieldId_value->begin();
+         itSku != m_sku_countryCode_langCode_fieldId_value->end(); ++itSku)
+    {
+        const auto &curSku = itSku.key();
+        if (curSku == sku)
+        {
+            for (auto itCountryCode = itSku.value().begin();
+                 itCountryCode != itSku.value().end(); ++itCountryCode)
+            {
+                const auto &countryCode = itCountryCode.key();
+                for (auto itLangCode = itCountryCode.value().begin();
+                     itLangCode != itCountryCode.value().end(); ++itLangCode)
+                {
+                    const auto &curLangCode = itLangCode.key();
+                    const auto &fieldId_value = itLangCode.value();
+                    if (curLangCode == langCode)
+                    {
+                        static QSet<QString> fieldIdsLang{
+                            "product_description"
+                            , "bullet_point1"
+                            , "bullet_point2"
+                            , "bullet_point3"
+                            , "bullet_point4"
+                            , "bullet_point5"};
+                        for (const auto &fieldId : fieldIdsLang)
+                        {
+                            if (!fieldId_value.contains(fieldId))
+                            {
+                                return false;
+                            }
+                        }
+
+                    }
+                }
+            }
+        }
+    }
+    return true;
 }
 
 bool GptFiller::_recordJsonSelect(const QString &skuParent, const QString &jsonReply)
