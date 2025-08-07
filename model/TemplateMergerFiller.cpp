@@ -1002,16 +1002,6 @@ void TemplateMergerFiller::_readSkus(QXlsx::Document &document,
                         sku_infos[sku].sizeTitleOrig = subElements.last();
                     }
                 }
-                /*
-                if ((sku_infos[sku].sizeOrig.isEmpty() && !sku_infos[sku].sizeTitleOrig.isEmpty())
-                    || (!sku_infos[sku].sizeOrig.isEmpty() && sku_infos[sku].sizeTitleOrig.isEmpty()))
-                {
-                    ExceptionTemplateError exception;
-                    exception.setInfos(QObject::tr("Size error"),
-                                       QObject::tr("Sku %1 has missing size informations").arg(sku));
-                    exception.raise();
-                }
-//*/
             }
         }
         Q_ASSERT(fieldId_index.contains("item_name"));
@@ -1273,30 +1263,34 @@ void TemplateMergerFiller::_checkVarationsNotMissing()
          itSku != m_sku_countryCode_langCode_fieldId_origValue.end(); ++itSku)
     {
         const auto &sku = itSku.key();
-        const auto &infos = m_sku_skuInfos[sku];
-        if ((infos.sizeOrig.isEmpty() && !infos.sizeTitleOrig.isEmpty())
-            || (!infos.sizeOrig.isEmpty() && infos.sizeTitleOrig.isEmpty()))
+        bool isParent = sku.startsWith("P-");
+        if (!isParent)
         {
-            ExceptionTemplateError exception;
-            exception.setInfos(QObject::tr("Size error"),
-                               QObject::tr("Sku %1 has missing size informations").arg(sku));
-            exception.raise();
-        }
-        if (!skuPArent_nColors.contains(infos.skuParent))
-        {
-            skuPArent_nColors[infos.skuParent] = 0;
-        }
-        if (!infos.colorOrig.isEmpty())
-        {
-            ++skuPArent_nColors[infos.skuParent];
-        }
-        const auto &fieldId_origValue = itSku.value().begin().value().begin().value();
-        if (!m_countryCode_sourceSkus[countryCodeFrom].contains(sku) && !fieldId_origValue.contains("item_name"))
-        {
-            ExceptionTemplateError exception;
-            exception.setInfos(QObject::tr("Title missing"),
-                               QObject::tr("Sku %1 has missing title").arg(sku));
-            exception.raise();
+            const auto &infos = m_sku_skuInfos[sku];
+            if ((infos.sizeOrig.isEmpty() && !infos.sizeTitleOrig.isEmpty())
+                || (!infos.sizeOrig.isEmpty() && infos.sizeTitleOrig.isEmpty()))
+            {
+                ExceptionTemplateError exception;
+                exception.setInfos(QObject::tr("Size error"),
+                                   QObject::tr("Sku %1 has missing size informations").arg(sku));
+                exception.raise();
+            }
+            if (!skuPArent_nColors.contains(infos.skuParent))
+            {
+                skuPArent_nColors[infos.skuParent] = 0;
+            }
+            if (!infos.colorOrig.isEmpty())
+            {
+                ++skuPArent_nColors[infos.skuParent];
+            }
+            const auto &fieldId_origValue = itSku.value().begin().value().begin().value();
+            if (!m_countryCode_sourceSkus[countryCodeFrom].contains(sku) && !fieldId_origValue.contains("item_name"))
+            {
+                ExceptionTemplateError exception;
+                exception.setInfos(QObject::tr("Title missing"),
+                                   QObject::tr("Sku %1 has missing title").arg(sku));
+                exception.raise();
+            }
         }
     }
     for (auto it = skuPArent_nColors.begin();
@@ -1490,6 +1484,7 @@ void TemplateMergerFiller::_fillDataLeftChatGpt(
                 , m_sku_countryCode_langCode_fieldId_origValue
                 , m_countryCode_langCode_fieldId_possibleValues
                 , m_countryCode_langCode_fieldIdMandatory
+                , m_countryCode_langCode_fieldIdChildOnly
                 , m_sku_countryCode_langCode_fieldId_value
                 , callBackProgress
                 , [this, langCodeFrom, countryCodeFrom, callBackFinishedError, callBackFinishedSuccess](){

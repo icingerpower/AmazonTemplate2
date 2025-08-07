@@ -54,6 +54,7 @@ public:
                     , const QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_origValue
                     , const QHash<QString, QHash<QString, QHash<QString, QStringList>>> &countryCode_langCode_fieldId_possibleValues
                     , const QHash<QString, QHash<QString, QSet<QString>>> &countryCode_langCode_fieldIdMandatory
+                    , const QHash<QString, QHash<QString, QSet<QString>>> &countryCode_langCode_fieldIdChildOnly
                     , QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_value // Then we will this using the previous
                     , std::function<void (int, int)> callBackProgress
                     , std::function<void()> callbackFinishedSuccess
@@ -74,6 +75,8 @@ signals:
     void finished();
 
 private:
+    void _saveReplies();
+    void _loadReplies();
     QString m_jsonFilePath;
     QList<QPair<QString, QString>> m_listCountryCode_langCode;
     QString m_countryCodeFrom;
@@ -81,6 +84,7 @@ private:
     const QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> *m_sku_countryCode_langCode_fieldId_origValue;
     const QHash<QString, QHash<QString, QHash<QString, QStringList>>> *m_countryCode_langCode_fieldId_possibleValues;
     const QHash<QString, QHash<QString, QSet<QString>>> *m_countryCode_langCode_fieldIdMandatory;
+    const QHash<QString, QHash<QString, QSet<QString>>> *m_countryCode_langCode_fieldIdChildOnly;
     const QSet<QString> *m_fieldIdsToIgnore;
     const QHash<QString, SkuInfo> *m_sku_infos;
     QHash<QString, QHash<QString, QString>> m_sku_langCode_varTitleInfos;
@@ -88,29 +92,48 @@ private:
     QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> *m_sku_countryCode_langCode_fieldId_value;
     QHash<QString, QHash<QString, QJsonObject>> m_skuParent_fieldId_jsonSelect;
     QHash<QString, QHash<QString, QHash<QString, QJsonObject>>> m_skuParent_colorOrig_fieldId_jsonText;
-    QHash<QString, QHash<QString, QJsonObject>> m_skuParent_fieldId_jsonSelectReply;
-    QHash<QString, QHash<QString, QHash<QString, QJsonObject>>> m_skuParent_colorOrig_fieldId_jsonTextReply;
+
+    QHash<QString, QHash<QString, QJsonObject>> m_skuParent_fieldId_jsonReplySelect;
+    QHash<QString, QHash<QString, QHash<QString, QJsonObject>>> m_skuParent_colorOrig_fieldId_jsonReplyText;
+    QHash<QString, QHash<QString, QJsonObject>> m_skuParent_langCodesToJoined_jsonReplyTitles;
+    QHash<QString, QHash<QString, QJsonObject>> m_skuParentColor_langCode_jsonReplyDesc;
+    QHash<QString, QHash<QString, QJsonObject>> m_skuParentColor_langCode_jsonReplyBullets;
     void _prepareQueries();
     void _processQueries();
-    void _saveReplies();
-    void _loadReplies();
-    bool _isJsonTextDone(const QString &skuParent, const QString &colorOrig, const QString &fieldId) const;
-    bool _isJsonSelectDone(const QString &skuParent, const QString &fieldId) const;
+    bool _reloadJsonText(const QString &skuParent, const QString &colorOrig, const QString &fieldId);
+    bool _reloadJsonSelect(const QString &skuParent, const QString &fieldId);
+    bool _reloadJsonTitles(const QString &skuParent, const QStringList &langCodesTo, const QString &langCodesToJoined);
+    bool _reloadJsonDesc(const QString &skuParent, const QString &skuColor, const QString &langCode);
+    bool _reloadJsonBullets(const QString &skuParentColor, const QString &langCode);
     QString _tryToFixJson(const QString &jsonReply) const;
     QJsonObject _getReplyObject(const QJsonDocument &jsonDoc) const;
+    QJsonObject _getReplyObject(const QString &jsonReply) const;
     bool _recordJsonTitles(const QString &skuParent
                            , const QStringList &langCodesTo
                            , const QString &jsonReply);
+    bool _recordJsonTitles(const QString &skuParent
+                           , const QStringList &langCodesTo
+                           , const QJsonObject &jsonObject);
     bool _recordJsonSelect(const QString &skuParent, const QString &jsonReply);
+    bool _recordJsonSelect(const QString &skuParent, const QJsonObject &jsonObject);
     bool _recordJsonText(const QString &skuParent, const QString &colorOrig, const QString &jsonReply);
+    bool _recordJsonText(const QString &skuParent, const QString &colorOrig, const QJsonObject &jsonObject);
     bool _recordJsonDescription(const QString &skuParent,
                                 const QString &colorOrig,
                                 const QString &langCode,
                                 const QString &jsonReply);
+    bool _recordJsonDescription(const QString &skuParent,
+                                const QString &colorOrig,
+                                const QString &langCode,
+                                const QJsonObject &jsonObject);
     bool _recordJsonBulletPoints(const QString &skuParent,
                                  const QString &colorOrig,
                                  const QString &langCode,
                                  const QString &jsonReply);
+    bool _recordJsonBulletPoints(const QString &skuParent,
+                                 const QString &colorOrig,
+                                 const QString &langCode,
+                                 const QJsonObject &jsonObject);
     int m_nQueries;
     std::atomic_int m_nDone;
     std::function<void (int, int)> m_callBackProgress;
