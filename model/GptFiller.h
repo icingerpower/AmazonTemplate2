@@ -105,7 +105,7 @@ private:
     bool _reloadJsonSelect(const QString &skuParent, const QString &fieldId);
     bool _reloadJsonTitles(const QString &skuParent, const QStringList &langCodesTo, const QString &langCodesToJoined);
     bool _reloadJsonDesc(const QString &skuParent, const QString &skuColor, const QString &langCode);
-    bool _reloadJsonBullets(const QString &skuParentColor, const QString &langCode);
+    bool _reloadJsonBullets(const QString &skuParent, const QString &skuColor, const QString &langCode);
     QString _tryToFixJson(const QString &jsonReply) const;
     QJsonObject _getReplyObject(const QJsonDocument &jsonDoc) const;
     QJsonObject _getReplyObject(const QString &jsonReply) const;

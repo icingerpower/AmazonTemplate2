@@ -100,6 +100,9 @@ GptFiller::GptFiller(const QString &workingDir,
     m_jsonFilePath = dir.absoluteFilePath("chatgpt.json");
     m_nQueries = 0;
     OpenAi::instance()->init(apiKey);
+    OpenAi::instance()->setMaxInFlight(1);
+    OpenAi::instance()->setMinSpacingMs(100000);
+    OpenAi::instance()->setMaxRetries(N_RETRY);
     m_stopAsked = false;
     _loadReplies();
 }
@@ -204,7 +207,7 @@ void GptFiller::askFillingTitles(const QString &countryCodeFrom
                         askStop();
                         if (m_nDone == m_nQueries)
                         {
-                            callbackFinishedFailure(jsonReply);
+                            callbackFinishedFailure("Titles: " + jsonReply);
                         }
                     }
                     , N_RETRY
@@ -213,6 +216,10 @@ void GptFiller::askFillingTitles(const QString &countryCodeFrom
 
             }
         }
+    }
+    if (m_nQueries == 0)
+    {
+        callbackFinishedSuccess();
     }
 }
 
@@ -246,7 +253,7 @@ void GptFiller::askFillingDescBullets(
                 if (!_isDescBulletDone(sku, langCode))
                 {
                     if (!_reloadJsonDesc(skuParent, colorOrig, langCode)
-                            || !_reloadJsonBullets(skuParentColor, langCode))
+                            || !_reloadJsonBullets(skuParent, colorOrig, langCode))
                     {
                         Q_ASSERT(QFile::exists(info.imageFilePath));
                         auto image = QSharedPointer<QImage>{new QImage{info.imageFilePath}};
@@ -306,7 +313,7 @@ void GptFiller::askFillingDescBullets(
                                 if (m_nDone == m_nQueries)
                                 {
                                     askStop();
-                                    callbackFinishedFailure(jsonReply);
+                                    callbackFinishedFailure("Bullets: " + jsonReply);
                                 }
                             }
                             , N_RETRY
@@ -319,16 +326,21 @@ void GptFiller::askFillingDescBullets(
                             ++m_nDone;
                             if (m_nDone == m_nQueries)
                             {
-                                callbackFinishedFailure(jsonReply);
+                                callbackFinishedFailure("Desc: " + jsonReply);
                             }
                         }
                         , N_RETRY
-                        , "gpt-5"
+                        , "gpt-4.1"
+                        //, "gpt-5"
                         );
                     }
                 }
             }
         }
+    }
+    if (m_nQueries == 0)
+    {
+        callbackFinishedSuccess();
     }
 }
 
@@ -373,7 +385,14 @@ void GptFiller::askFilling(const QString &countryCodeFrom
         }
     }
     _prepareQueries();
-    _processQueries();
+    if (m_nQueries > 0)
+    {
+        _processQueries();
+    }
+    else
+    {
+        callbackFinishedSuccess();
+    }
 }
 
 void GptFiller::askTrueMandatory(const QString &productType,
@@ -633,7 +652,7 @@ void GptFiller::_processQueries()
             const QString &json = QString::fromUtf8(QJsonDocument(jsonObject).toJson(QJsonDocument::Compact));
             question += json;
             qDebug() << "Asking ChatGpt field id:" << itFieldId_jsonSelect.key() << " - " << question;
-            QImage *image = new QImage{firstInfo.imageFilePath};
+            auto image = QSharedPointer<QImage>{new QImage{firstInfo.imageFilePath}};
             OpenAi::instance()->askQuestion(
                 question
                 , *image
@@ -645,15 +664,13 @@ void GptFiller::_processQueries()
                 , [this, image, skuParent, fieldId, updateAfterQueryProcessed](const QString &jsonReply){
                     m_skuParent_fieldId_jsonReplySelect[skuParent][fieldId] = _getReplyObject(jsonReply);
                     _saveReplies();
-                    delete image;
                     updateAfterQueryProcessed();
                 }
                 , [this, image, skuParent, updateAfterQueryProcessedFailed](const QString &jsonReply){
                     askStop();
                     qDebug() << "REPLY FAILURE ChatGpt SELECT field id:"
                              << skuParent << "-" << jsonReply;
-                    delete image;
-                    updateAfterQueryProcessedFailed(jsonReply);
+                    updateAfterQueryProcessedFailed("Select: " + jsonReply);
                 }
                 , N_RETRY
                 );
@@ -710,7 +727,7 @@ void GptFiller::_processQueries()
                         qDebug() << "REPLY FAILURE ChatGpt TEXT first field id:"
                                  << skuParent << "-" << jsonReply;
                         delete image;
-                        updateAfterQueryProcessedFailed(jsonReply);
+                        updateAfterQueryProcessedFailed("Text: " + jsonReply);
                     }
                     , N_RETRY
                     );
@@ -1402,10 +1419,16 @@ bool GptFiller::_reloadJsonDesc(
 }
 
 bool GptFiller::_reloadJsonBullets(
-    const QString &skuParentColor, const QString &langCode)
+    const QString &skuParent, const QString &skuColor, const QString &langCode)
 {
-    return m_skuParentColor_langCode_jsonReplyBullets.contains(skuParentColor)
-           && m_skuParentColor_langCode_jsonReplyBullets[skuParentColor].contains(langCode);
+    const QString &skuParentColor = skuParent + skuColor;
+    if (m_skuParentColor_langCode_jsonReplyBullets.contains(skuParentColor)
+           && m_skuParentColor_langCode_jsonReplyBullets[skuParentColor].contains(langCode))
+    {
+        return _recordJsonBulletPoints(
+            skuParent, skuColor, langCode, m_skuParentColor_langCode_jsonReplyBullets[skuParentColor][langCode]);
+    }
+    return false;
 }
 
 QString GptFiller::_tryToFixJson(const QString &jsonReply) const
