@@ -21,6 +21,20 @@ const QString GptFiller::PROMPT_FIRST{
     " reply in json without adding any details or explanation."
 };
 
+const QString GptFiller::PROMPT_FIRST_NO_IMAGE{
+    "I am selling a product of category %1 in amazon (FBA). "
+    "You need to help me fill the product page template. "
+    "The product is new, from China, without hazmat materials. "
+    "We use international metric system. "
+    "Inventory is Year round replenishable. "
+    "For each field, I will send you json informations. "
+    "You need to reply as json. Only return as reply the content of the "
+    "json object \"return\" replacing TODO by the field values. "
+    "If You are not sure guess the best choice as you can only"
+    " reply in json without adding any details or explanation."
+};
+
+
 const QString GptFiller::PROMPT_INTRODUCE_JSON{
     "Here is the first question that I am asking in json format:"
 };
@@ -101,7 +115,7 @@ GptFiller::GptFiller(const QString &workingDir,
     m_nQueries = 0;
     OpenAi::instance()->init(apiKey);
     OpenAi::instance()->setMaxInFlight(1);
-    OpenAi::instance()->setMinSpacingMs(5000);
+    OpenAi::instance()->setMinSpacingMs(10000);
     OpenAi::instance()->setMaxRetries(N_RETRY);
     _loadReplies();
 }
@@ -348,6 +362,7 @@ void GptFiller::askFillingDescBullets(
 
 void GptFiller::askFilling(const QString &countryCodeFrom
                            , const QString &langCodeFrom
+                           , const QString &productType
                            , const QSet<QString> &fieldIdsToIgnore
                            , const QHash<QString, SkuInfo> &sku_infos
                            , const QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_origValue
@@ -360,6 +375,7 @@ void GptFiller::askFilling(const QString &countryCodeFrom
                            , std::function<void (const QString &)> callbackFinishedFailure
                            )
 {
+    m_productType = productType;
     m_callBackProgress = callBackProgress;
     m_callbackFinishedFailure = callbackFinishedFailure;
     m_callbackFinishedSuccess = callbackFinishedSuccess;
@@ -498,6 +514,7 @@ void GptFiller::_prepareQueries()
                                     {
                                         jsonPossibleValues << possibleValue;
                                     }
+                                    Q_ASSERT(jsonPossibleValues.size() > 1);
                                     QJsonObject jsonPossibleValuesObject;
                                     jsonPossibleValuesObject["countryCodeTo"] = countryCodeTo;
                                     jsonPossibleValuesObject["langCodeTo"] = langCodeTo;
@@ -632,7 +649,9 @@ void GptFiller::_processQueries()
              itFieldId_jsonSelect != itSkuParent.value().end(); ++itFieldId_jsonSelect)
         {
             const auto &fieldId = itFieldId_jsonSelect.key();
-            QString question{PROMPT_FIRST};
+            const auto &jsonObject = itFieldId_jsonSelect.value();
+            bool isFromValueEnough = jsonObject.contains("fromValue") && !m_productType.isEmpty() && !fieldId.contains("recommended_browse_node"); // No need for the image
+            QString question = isFromValueEnough ? PROMPT_FIRST_NO_IMAGE.arg(m_productType): PROMPT_FIRST;
             const QString &firstSku = m_skuParent_skus.value(skuParent);
             const auto &firstInfo = (*m_sku_infos)[firstSku];
             question += "\n";
@@ -640,11 +659,11 @@ void GptFiller::_processQueries()
             question += "\n";
             question += PROMPT_INTRODUCE_JSON;
             question += "\n";
-            const auto &jsonObject = itFieldId_jsonSelect.value();
             const QString &json = QString::fromUtf8(QJsonDocument(jsonObject).toJson(QJsonDocument::Compact));
             question += json;
             qDebug() << "Asking ChatGpt field id:" << itFieldId_jsonSelect.key() << " - " << question;
-            auto image = QSharedPointer<QImage>{new QImage{firstInfo.imageFilePath}};
+            auto pimage = isFromValueEnough ? new QImage : new QImage{firstInfo.imageFilePath};
+            auto image = QSharedPointer<QImage>{pimage};
             OpenAi::instance()->askQuestion(
                 question
                 , *image

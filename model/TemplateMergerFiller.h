@@ -104,7 +104,7 @@ private:
 
     void _readFields(QXlsx::Document &document, const QString &countryCode, const QString &langCode);
     void _readMandatory(QXlsx::Document &document, const QString &countryCode, const QString &langCode);
-    void _readValidValues(QXlsx::Document &document, const QString &countryCode, const QString &langCode);
+    void _readValidValues(QXlsx::Document &document, const QString &countryCode, const QString &langCode, const QString &countryCodeFrom, const QString &langCodeFrom);
     void _preFillChildOny();
     bool _isSkuParent(const QString &sku) const;
     QHash<QString, int> _get_fieldId_index(QXlsx::Document &doc) const;

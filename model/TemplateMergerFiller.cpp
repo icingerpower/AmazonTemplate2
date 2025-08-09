@@ -437,8 +437,8 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_PUT_FIRST_VALUE{
     , "product_type#1.value"
     , "fulfillment_center_id"
     , "fulfillment_availability#1.fulfillment_channel_code"
-    , "recommended_browse_nodes"
-    , "recommended_browse_nodes#1.value"
+    //, "recommended_browse_nodes"
+    //, "recommended_browse_nodes#1.value"
 };
 
 const QSet<QString> TemplateMergerFiller::FIELD_IDS_EXTRA_MANDATORY{
@@ -780,6 +780,7 @@ void TemplateMergerFiller::_preFillChildOny()
                                            , "outer_material_type", "outer#1.value"
                                            , "relationship_type", "child_parent_sku_relationship#1.child_relationship_type"
                                            , "manufacturer", "manufacturer#1.value"
+                                           , "parent_sku", "child_parent_sku_relationship#1.parent_sku"
                                           };
     static QHash<QString, QHash<QString, QSet<QString>>> countryCode_langCode_parent;
     static QSet<QString> fieldIdsAllParents;
@@ -1252,6 +1253,7 @@ void TemplateMergerFiller::_setFilePathsToFill(const QString &keywordFilePath,
     _readKeywords(keywordFilePath);
 
     const auto &countryCodeFrom = _getCountryCode(m_filePathFrom);
+    const auto &langCodeFrom = _getLangCode(m_filePathFrom);
     QStringList toFillFilePathsSorted{toFillFilePaths.begin(), toFillFilePaths.end()};
     std::sort(toFillFilePathsSorted.begin(), toFillFilePathsSorted.end());
     toFillFilePathsSorted.insert(0, toFillFilePathsSorted.takeAt(toFillFilePathsSorted.indexOf(m_filePathFrom)));
@@ -1279,8 +1281,8 @@ void TemplateMergerFiller::_setFilePathsToFill(const QString &keywordFilePath,
         }
         _readFields(document, countryCodeTo, langCodeTo);
         _readMandatory(document, countryCodeTo, langCodeTo);
-        _readValidValues(document, countryCodeTo, langCodeTo);
         _preFillChildOny();
+        _readValidValues(document, countryCodeTo, langCodeTo, countryCodeFrom, langCodeFrom);
     }
 }
 
@@ -1635,27 +1637,28 @@ void TemplateMergerFiller::_fillDataLeftChatGpt(
 {
     const auto &langCodes  = getLangCodesTo();
     m_gptFiller->askFillingDescBullets(
-        m_sku_skuInfos
-        , m_countryCode_langCode_fieldIdMandatory
-        , m_sku_countryCode_langCode_fieldId_value
-        , langCodes
-        , [this, callBackProgress, callBackFinishedSuccess, callBackFinishedError]() {
-            const auto &countryCodeFrom = _getCountryCode(m_filePathFrom);
-            const auto &langCodeFrom = _getLangCode(m_filePathFrom);
-            m_gptFiller->askFilling(
-                countryCodeFrom
-                , langCodeFrom
-                , FIELD_IDS_NOT_AI
-                , m_sku_skuInfos
-                , m_sku_countryCode_langCode_fieldId_origValue
-                , m_countryCode_langCode_fieldId_possibleValues
+                m_sku_skuInfos
                 , m_countryCode_langCode_fieldIdMandatory
-                , m_countryCode_langCode_fieldIdChildOnly
                 , m_sku_countryCode_langCode_fieldId_value
-                , callBackProgress
-                , [this, langCodeFrom, countryCodeFrom, callBackFinishedError, callBackFinishedSuccess](){
-                    const auto &sku_langCode_varTitleInfos = _get_sku_langCode_varTitleInfos();
-                    m_gptFiller->askFillingTitles(
+                , langCodes
+                , [this, callBackProgress, callBackFinishedSuccess, callBackFinishedError]() {
+        const auto &countryCodeFrom = _getCountryCode(m_filePathFrom);
+        const auto &langCodeFrom = _getLangCode(m_filePathFrom);
+        m_gptFiller->askFilling(
+                    countryCodeFrom
+                    , langCodeFrom
+                    , m_productType
+                    , FIELD_IDS_NOT_AI
+                    , m_sku_skuInfos
+                    , m_sku_countryCode_langCode_fieldId_origValue
+                    , m_countryCode_langCode_fieldId_possibleValues
+                    , m_countryCode_langCode_fieldIdMandatory
+                    , m_countryCode_langCode_fieldIdChildOnly
+                    , m_sku_countryCode_langCode_fieldId_value
+                    , callBackProgress
+                    , [this, langCodeFrom, countryCodeFrom, callBackFinishedError, callBackFinishedSuccess](){
+            const auto &sku_langCode_varTitleInfos = _get_sku_langCode_varTitleInfos();
+            m_gptFiller->askFillingTitles(
                         countryCodeFrom
                         , langCodeFrom
                         , m_countryCode_sourceSkus
@@ -1663,20 +1666,20 @@ void TemplateMergerFiller::_fillDataLeftChatGpt(
                         , sku_langCode_varTitleInfos
                         , m_sku_countryCode_langCode_fieldId_value
                         , [this, callBackFinishedSuccess](){
-                            _createToFillXlsx();
-                            callBackFinishedSuccess();
+                _createToFillXlsx();
+                callBackFinishedSuccess();
 
-                        }
-                        , callBackFinishedError);
-                }
-                , [this, callBackFinishedError](const QString &error){
-                    _createToFillXlsx();
-                    callBackFinishedError(error);
-                }
-                );
+            }
+            , callBackFinishedError);
         }
-        , callBackFinishedError
+        , [this, callBackFinishedError](const QString &error){
+            _createToFillXlsx();
+            callBackFinishedError(error);
+        }
         );
+    }
+    , callBackFinishedError
+    );
 }
 
 void TemplateMergerFiller::_createToFillXlsx()
@@ -1720,7 +1723,7 @@ void TemplateMergerFiller::_createToFillXlsx()
             }
             ++row;
         }
-        for (auto colInd : qAsConst(allColIndexes))
+        for (auto colInd : std::as_const(allColIndexes))
         {
             document.setColumnHidden(colInd + 1, false);
         }
@@ -1864,7 +1867,12 @@ void TemplateMergerFiller::_readMandatory(
 }
 
 void TemplateMergerFiller::_readValidValues(
-    QXlsx::Document &document, const QString &countryCode, const QString &langCode)
+        QXlsx::Document &document
+        , const QString &countryCodeTo
+        , const QString &langCodeTo
+        , const QString &countryCodeFrom
+        , const QString &langCodeFrom
+        )
 {
     _selectValidValuesSheet(document);
     const auto &dimValidValues = document.dimension();
@@ -1880,10 +1888,10 @@ void TemplateMergerFiller::_readValidValues(
             }
             if (!fieldName.isEmpty())
             {
-                Q_ASSERT(m_countryCode_langCode_fieldName_fieldId[countryCode][langCode].contains(fieldName));
-                if (m_countryCode_langCode_fieldName_fieldId[countryCode][langCode].contains(fieldName))
+                Q_ASSERT(m_countryCode_langCode_fieldName_fieldId[countryCodeTo][langCodeTo].contains(fieldName));
+                if (m_countryCode_langCode_fieldName_fieldId[countryCodeTo][langCodeTo].contains(fieldName))
                 {
-                    const auto &fieldId = m_countryCode_langCode_fieldName_fieldId[countryCode][langCode][fieldName];
+                    const auto &fieldId = m_countryCode_langCode_fieldName_fieldId[countryCodeTo][langCodeTo][fieldName];
                     for (int j=2; i<dimValidValues.lastColumn(); ++j)
                     {
                         auto cellValue = document.cellAt(i+1, j+1);
@@ -1893,12 +1901,72 @@ void TemplateMergerFiller::_readValidValues(
                             value = cellValue->value().toString();
                             if (!value.isEmpty())
                             {
-                                m_countryCode_langCode_fieldId_possibleValues[countryCode][langCode][fieldId] << value;
+                                m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo][fieldId] << value;
                             }
                         }
                         if (value.isEmpty())
                         {
                             break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for (auto itFieldId = m_countryCode_langCode_fieldId_possibleValues[countryCodeFrom][langCodeFrom].begin();
+         itFieldId != m_countryCode_langCode_fieldId_possibleValues[countryCodeFrom][langCodeFrom].end(); ++itFieldId)
+    { // We alread fill the values we can deduct, like choice when one choice only, or country from china, to reduce the number of query that will be done by AI
+        const auto &fieldId = itFieldId.key();
+        const auto &possibleValues = itFieldId.value();
+        if (possibleValues.size() == 1)
+        {
+            const auto &uniquePossibleValue = *possibleValues.begin();
+            for (auto itSku = m_sku_countryCode_langCode_fieldId_origValue.begin();
+                 itSku != m_sku_countryCode_langCode_fieldId_origValue.end(); ++itSku)
+            {
+                const auto &sku = itSku.key();
+                bool isParent = sku.startsWith("P-");
+                if (!isParent || !m_countryCode_langCode_fieldIdChildOnly[countryCodeTo][langCodeTo].contains(fieldId))
+                {
+                    m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId] = uniquePossibleValue;
+                }
+            }
+        }
+        else if (fieldId.contains("country_of_origin"))
+        {
+            static QSet<QString> china{
+                "Chine",   // FR - French
+                "Cina",    // IT - Italian
+                "China",   // ES - Spanish
+                "China",   // EN - English (UK/US/IE/etc.)
+                "china",   // NL - Dutch
+                "Kina",    // SE - Swedish
+                "Chiny",   // PL - Polish
+                "Çin",     // TR - Turkish
+                "China",   // DE - German
+                "中国"      // JP - Japanese
+            };
+            for (auto itSku = m_sku_countryCode_langCode_fieldId_origValue.begin();
+                 itSku != m_sku_countryCode_langCode_fieldId_origValue.end(); ++itSku)
+            {
+                const auto &sku = itSku.key();
+                bool isParent = sku.startsWith("P-");
+                if (!isParent || !m_countryCode_langCode_fieldIdChildOnly[countryCodeTo][langCodeTo].contains(fieldId))
+                {
+                    if (m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom].contains(fieldId))
+                    {
+                        const QString &fromCountry = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][fieldId].toString();
+                        if (china.contains(fromCountry))
+                        {
+                            for (const auto &possibleValue : possibleValues)
+                            {
+                                if (china.contains(possibleValue))
+                                {
+                                    m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId] = possibleValue;
+                                    break;
+                                }
+
+                            }
                         }
                     }
                 }

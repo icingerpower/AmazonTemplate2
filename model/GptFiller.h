@@ -23,6 +23,7 @@ public:
     };
     static const int N_RETRY;
     static const QString PROMPT_FIRST; // First field of an SKU parent showing also an image of the product. Then, json will be sent only
+    static const QString PROMPT_FIRST_NO_IMAGE;
     static const QString PROMPT_INTRODUCE_JSON;
     static const QString PROMPT_ASK_NOT_MANDATORY;
     static const QString PROMPT_TEXT_START;
@@ -49,6 +50,7 @@ public:
                                );
     void askFilling(const QString &countryCodeFrom
                     , const QString &langCodeFrom
+                    , const QString &productType
                     , const QSet<QString> &fieldIdsToIgnore
                     , const QHash<QString, SkuInfo> &sku_infos
                     , const QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_origValue
@@ -140,6 +142,7 @@ private:
     std::function<void (int, int)> m_callBackProgress;
     std::function<void ()> m_callbackFinishedSuccess;
     std::function<void (const QString &)> m_callbackFinishedFailure;
+    QString m_productType;
 };
 
 #endif // GPTFILLER_H
