@@ -69,7 +69,6 @@ public:
 
 public slots:
     void clear();
-    void askStop();
 
 signals:
     void finished();
@@ -95,7 +94,7 @@ private:
 
     QHash<QString, QHash<QString, QJsonObject>> m_skuParent_fieldId_jsonReplySelect;
     QHash<QString, QHash<QString, QHash<QString, QJsonObject>>> m_skuParent_colorOrig_fieldId_jsonReplyText;
-    QHash<QString, QHash<QString, QJsonObject>> m_skuParent_langCodesToJoined_jsonReplyTitles;
+    QHash<QString, QHash<QString, QJsonObject>> m_skuParent_langCode_jsonReplyTitles;
     QHash<QString, QHash<QString, QJsonObject>> m_skuParentColor_langCode_jsonReplyDesc;
     QHash<QString, QHash<QString, QJsonObject>> m_skuParentColor_langCode_jsonReplyBullets;
     void _prepareQueries();
@@ -103,10 +102,11 @@ private:
     bool _isDescBulletDone(const QString &sku, const QString &langCode) const;
     bool _reloadJsonText(const QString &skuParent, const QString &colorOrig, const QString &fieldId);
     bool _reloadJsonSelect(const QString &skuParent, const QString &fieldId);
-    bool _reloadJsonTitles(const QString &skuParent, const QStringList &langCodesTo, const QString &langCodesToJoined);
+    bool _reloadJsonTitles(const QString &skuParent, const QString &langCodeTo);
     bool _reloadJsonDesc(const QString &skuParent, const QString &skuColor, const QString &langCode);
     bool _reloadJsonBullets(const QString &skuParent, const QString &skuColor, const QString &langCode);
     QString _tryToFixJson(const QString &jsonReply) const;
+    QString _getLangCodesJoined(const QStringList &langCodes) const;
     QJsonObject _getReplyObject(const QJsonDocument &jsonDoc) const;
     QJsonObject _getReplyObject(const QString &jsonReply) const;
     bool _recordJsonTitles(const QString &skuParent
@@ -121,26 +121,25 @@ private:
     bool _recordJsonText(const QString &skuParent, const QString &colorOrig, const QJsonObject &jsonObject);
     bool _recordJsonDescription(const QString &skuParent,
                                 const QString &colorOrig,
-                                const QString &langCode,
+                                const QStringList &langCodesDone,
                                 const QString &jsonReply);
     bool _recordJsonDescription(const QString &skuParent,
                                 const QString &colorOrig,
-                                const QString &langCode,
+                                const QStringList &langCodesDone,
                                 const QJsonObject &jsonObject);
     bool _recordJsonBulletPoints(const QString &skuParent,
                                  const QString &colorOrig,
-                                 const QString &langCode,
+                                 const QStringList &langCodesDone,
                                  const QString &jsonReply);
     bool _recordJsonBulletPoints(const QString &skuParent,
                                  const QString &colorOrig,
-                                 const QString &langCode,
+                                 const QStringList &langCodesDone,
                                  const QJsonObject &jsonObject);
     int m_nQueries;
     std::atomic_int m_nDone;
     std::function<void (int, int)> m_callBackProgress;
     std::function<void ()> m_callbackFinishedSuccess;
     std::function<void (const QString &)> m_callbackFinishedFailure;
-    bool m_stopAsked;
 };
 
 #endif // GPTFILLER_H

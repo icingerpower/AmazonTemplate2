@@ -177,7 +177,6 @@ void MainWindow::generate()
 {
     if (m_templateMergerFiller != nullptr)
     {
-        m_templateMergerFiller->stopChatGPT();
         auto *templateMergerFiller = m_templateMergerFiller;
         QTimer::singleShot(5000, this, [templateMergerFiller]{
             delete templateMergerFiller;

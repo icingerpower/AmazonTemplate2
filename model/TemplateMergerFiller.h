@@ -69,7 +69,6 @@ public:
                         , std::function<void()> callBackFinishedSuccess
                         , std::function<void(const QString &)> callbackFinishedFailure
                         );
-    void stopChatGPT();
     QSet<QString> getLangCodesTo() const;
     // ChatGpt, for each field mandatory, will say if needed for child only or both
     // ChatGpt, will be asked value, for each lang

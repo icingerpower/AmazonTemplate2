@@ -400,6 +400,7 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_NOT_AI{
     , "external_product_id"
     , "amzn1.volt.ca.product_id_value"
     , "external_product_type"
+    , "external_product_id_type"
     , "amzn1.volt.ca.product_id_type"
     , "item_sku"
     , "contribution_sku#1.value"
@@ -419,6 +420,16 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_NOT_AI{
     , "item_package_dimensions#1.height.value"
     , "package_weight"
     , "item_package_weight#1.value"
+    , "package_weight"
+    , "product_description", "product_description#1.value"
+    , "bullet_point1", "bullet_point#1.value"
+    , "bullet_point2", "bullet_point#2.value"
+    , "bullet_point3", "bullet_point#3.value"
+    , "bullet_point4", "bullet_point#4.value"
+    , "bullet_point5", "bullet_point#5.value"
+    //, "quantity", "fulfillment_availability#1.quantity"
+    //, "list_price_with_tax"
+    //, "list_price#1.value_with_tax"
 };
 
 const QSet<QString> TemplateMergerFiller::FIELD_IDS_PUT_FIRST_VALUE{
@@ -456,6 +467,9 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_PATTERN_REMOVE_AS_MANDATORY{
     , "dsa_"
     , "flavor"
     , "release_date"
+    , "item_volume"
+    , "item_weight"
+    , "quantity", "fulfillment_availability#1.quantity"
 };
 
 const QHash<QString, TemplateMergerFiller::FuncFiller>
@@ -465,10 +479,10 @@ const QHash<QString, TemplateMergerFiller::FuncFiller>
     , {"parentage_level#1.value", FUNC_FILLER_COPY}
     , {"parent_sku", FUNC_FILLER_COPY}
     , {"child_parent_sku_relationship#1.parent_sku", FUNC_FILLER_COPY}
-    , {"relationship_type", FUNC_FILLER_COPY}
-    , {"child_parent_sku_relationship#1.child_relationship_type", FUNC_FILLER_COPY}
-    , {"variation_theme", FUNC_FILLER_COPY}
-    , {"variation_theme#1.name", FUNC_FILLER_COPY}
+    //, {"relationship_type", FUNC_FILLER_COPY}
+    //, {"child_parent_sku_relationship#1.child_relationship_type", FUNC_FILLER_COPY}
+    //, {"variation_theme", FUNC_FILLER_COPY}
+    //, {"variation_theme#1.name", FUNC_FILLER_COPY}
     , {"manufacturer", FUNC_FILLER_COPY}
     , {"manufacturer#1.value", FUNC_FILLER_COPY}
 };
@@ -503,6 +517,7 @@ const QHash<QString, TemplateMergerFiller::FuncFiller> TemplateMergerFiller::FIE
     , {"amzn1.volt.ca.product_id_value", FUNC_FILLER_COPY}
     , {"external_product_id_type", FUNC_FILLER_COPY}
     , {"external_product_type", FUNC_FILLER_COPY}
+    , {"external_product_id_type", FUNC_FILLER_COPY}
     , {"amzn1.volt.ca.product_id_type", FUNC_FILLER_COPY}
     , {"package_length", FUNC_FILLER_COPY}
     , {"item_package_dimensions#1.length.value", FUNC_FILLER_COPY}
@@ -640,6 +655,7 @@ void TemplateMergerFiller::_recordValueAllVersion(
         }
         return _mappingFieldId;
     }();
+    Q_ASSERT(fieldId != "external_product_type");
     Q_ASSERT(!fieldId.isEmpty());
     fieldId_value[fieldId] = value;
     Q_ASSERT(!mappingFieldId[fieldId].isEmpty());
@@ -677,6 +693,7 @@ void TemplateMergerFiller::_preFillChildOny()
                                            , "apparel_height_type"
                                            , "apparel_size#1.height_type"
                                            , "size_map"
+                                           , "size_name"
                                            , "fulfillment_center_id"
                                            , "fulfillment_availability#1.fulfillment_channel_code"
                                            , "package_length"
@@ -736,22 +753,64 @@ void TemplateMergerFiller::_preFillChildOny()
                                            , "shapewear_size#1.body_type"
                                            , "shapewear_height_type"
                                            , "shapewear_size#1.height_type"
-    };
+                                           , "product_description", "product_description#1.value"
+                                           , "bullet_point1", "bullet_point#1.value"
+                                           , "bullet_point2", "bullet_point#2.value"
+                                           , "bullet_point3", "bullet_point#3.value"
+                                           , "bullet_point4", "bullet_point#4.value"
+                                           , "bullet_point5", "bullet_point#5.value"
+                                           , "color_map"
+                                           , "fit_type", "fit_type#1.value"
+                                           , "collar_style", "collar_style#1.value"
+                                           , "color_name", "color#1.value"
+                                           , "weave_type", "weave_type#1.value"
+                                           , "pattern_name"
+                                           , "department_name"
+                                           , "model"
+                                           , "lifecycle_supply_type"
+                                           , "item_length_description", "item_length_description#1.value"
+                                           , "fabric_type", "fabric_type#1.value"
+                                           , "standard_price", "purchasable_offer#1.our_price#1.schedule#1.value_with_tax"
+                                           , "are_batteries_included"
+                                           , "external_product_id"
+                                           , "external_product_id_type"
+                                           , "amzn1.volt.ca.product_id_value"
+                                           , "external_product_type"
+                                           , "amzn1.volt.ca.product_id_type"
+                                           , "outer_material_type", "outer#1.value"
+                                           , "relationship_type", "child_parent_sku_relationship#1.child_relationship_type"
+                                           , "manufacturer", "manufacturer#1.value"
+                                          };
+    static QHash<QString, QHash<QString, QSet<QString>>> countryCode_langCode_parent;
+    static QSet<QString> fieldIdsAllParents;
     for (auto itCountry = m_countryCode_langCode_fieldIdMandatory.begin();
          itCountry != m_countryCode_langCode_fieldIdMandatory.end(); ++itCountry)
     {
+        const auto &countryCode = itCountry.key();
         for (auto itLangCode = itCountry.value().begin();
              itLangCode != itCountry.value().end(); ++itLangCode)
         {
+            const auto &langCode = itLangCode.key();
             const auto &fieldIds = itLangCode.value();
             for (const auto &fieldId : fieldIds)
             {
                 if (fieldIdsChildOnly.contains(fieldId))
                 {
-                    m_countryCode_langCode_fieldIdChildOnly[itCountry.key()][itLangCode.key()].insert(fieldId);
+                    m_countryCode_langCode_fieldIdChildOnly[countryCode][langCode].insert(fieldId);
+                }
+                else
+                {
+                    countryCode_langCode_parent[countryCode][langCode].insert(fieldId);
+                    fieldIdsAllParents.insert(fieldId);
                 }
             }
+            qDebug() << "--\nPARENT field ids - The following field id will be filled for the parents:"
+                     << countryCode << "-" << langCode << fieldIdsAllParents;
         }
+    }
+    if (countryCode_langCode_parent.size() > 1)
+    {
+        qDebug() << "--\nPARENT field ids - The following field id will be filled for the parents:" << fieldIdsAllParents;
     }
 }
 
@@ -898,11 +957,6 @@ void TemplateMergerFiller::fillExcelFiles(
                                       _fillDataLeftChatGpt(callBackProgress, callBackFinishedSuccess, callbackFinishedFailure);
                                   }
                                   , callbackFinishedFailure);
-}
-
-void TemplateMergerFiller::stopChatGPT()
-{
-    m_gptFiller->askStop();
 }
 
 QSet<QString> TemplateMergerFiller::getLangCodesTo() const
@@ -1101,7 +1155,6 @@ void TemplateMergerFiller::_readSkus(QXlsx::Document &document,
     }
     if (isMainFile)
     {
-
         auto valid1 = skus.size();
         auto valid2 = skus.size()-nParents;
         const QSet<qsizetype> validCounts{valid1, valid2};
@@ -1111,6 +1164,7 @@ void TemplateMergerFiller::_readSkus(QXlsx::Document &document,
                 "external_product_id"
                 , "amzn1.volt.ca.product_id_value"
                 , "external_product_type"
+                , "external_product_id_type"
                 , "amzn1.volt.ca.product_id_type"
             };
             if (excludeFieldIds.contains(fieldId))
@@ -1417,7 +1471,7 @@ void TemplateMergerFiller::_checkVarationsNotMissing()
     }
 }
 
-    void TemplateMergerFiller::_fillDataAutomatically()
+void TemplateMergerFiller::_fillDataAutomatically()
 {
     //m_sku_countryCode_fieldId_value;
     const auto &countryCodeFrom = _getCountryCode(m_filePathFrom);
@@ -1432,8 +1486,17 @@ void TemplateMergerFiller::_checkVarationsNotMissing()
         const auto &fieldIdsMandatory = m_countryCode_langCode_fieldIdMandatory[countryCodeTo][langCodeTo];
         for (const auto &sku : m_skus)
         {
+            bool isParent = sku.startsWith("P-");
             for (const auto &fieldId : fieldIdsMandatory)
             {
+                if (fieldId.startsWith("list_price") && langCodeTo == "NL")
+                {
+                    int TEMP=10;++TEMP;
+                }
+                if (isParent && m_countryCode_langCode_fieldIdChildOnly[countryCodeTo][langCodeTo].contains(fieldId))
+                {
+                    continue;
+                }
                 if (fieldId_index.contains(fieldId))
                 {
                     if (!(m_sku_countryCode_langCode_fieldId_origValue[sku].contains(countryCodeTo)
@@ -1455,11 +1518,33 @@ void TemplateMergerFiller::_checkVarationsNotMissing()
                                 }
                             }
                         }
-                        if (!_isSkuParent(sku) || !m_countryCode_langCode_fieldIdChildOnly[countryCodeTo][langCodeTo].contains(fieldId))
+                        if (FIELD_IDS_FILLER_NO_SOURCES.contains(fieldId))
                         {
-                            if (FIELD_IDS_FILLER_NO_SOURCES.contains(fieldId))
+                            const auto &filler = FIELD_IDS_FILLER_NO_SOURCES[fieldId];
+                            const auto &fillerValue = filler(countryCodeFrom,
+                                                             countryCodeTo,
+                                                             langCodeTo,
+                                                             m_countryCode_langCode_keywords,
+                                                             m_gender,
+                                                             m_age,
+                                                             origValue);
+                            _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
+                                                   fieldId,
+                                                   fillerValue);
+                        }
+                        else if (FIELD_IDS_PUT_FIRST_VALUE.contains(fieldId))
+                        {
+                            Q_ASSERT(m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo].contains(fieldId));
+                            const auto &validValues = m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo][fieldId];
+                            _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
+                                                   fieldId,
+                                                   validValues[0]);
+                        }
+                        else if (!m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo].contains(fieldId))
+                        {
+                            if (FIELD_IDS_FILLER.contains(fieldId))
                             {
-                                const auto &filler = FIELD_IDS_FILLER_NO_SOURCES[fieldId];
+                                const auto &filler = FIELD_IDS_FILLER[fieldId];
                                 const auto &fillerValue = filler(countryCodeFrom,
                                                                  countryCodeTo,
                                                                  langCodeTo,
@@ -1471,35 +1556,11 @@ void TemplateMergerFiller::_checkVarationsNotMissing()
                                                        fieldId,
                                                        fillerValue);
                             }
-                            else if (FIELD_IDS_PUT_FIRST_VALUE.contains(fieldId))
-                            {
-                                Q_ASSERT(m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo].contains(fieldId));
-                                const auto &validValues = m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo][fieldId];
-                                _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
-                                                       fieldId,
-                                                       validValues[0]);
-                            }
-                            else if (!m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo].contains(fieldId))
-                            {
-                                if (FIELD_IDS_FILLER.contains(fieldId))
-                                {
-                                    const auto &filler = FIELD_IDS_FILLER[fieldId];
-                                    const auto &fillerValue = filler(countryCodeFrom,
-                                                                     countryCodeTo,
-                                                                     langCodeTo,
-                                                                     m_countryCode_langCode_keywords,
-                                                                     m_gender,
-                                                                     m_age,
-                                                                     origValue);
-                                    _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
-                                                           fieldId,
-                                                           fillerValue);
-                                }
-                            }
                         }
                     }
                 }
             }
+            // We do a second round to fill size from other columns
             for (const auto &fieldId : fieldIdsMandatory)
             {
                 if (!_isSkuParent(sku) || !m_countryCode_langCode_fieldIdChildOnly[countryCodeTo][langCodeTo].contains(fieldId))
@@ -2101,6 +2162,10 @@ void TemplateMergerFiller::_formatFieldId(QString &fieldId) const
 {
     static const QRegularExpression brackets(R"(\[[^\]]*\])");
     fieldId.remove(brackets);
+    if (fieldId.contains(" "))
+    {
+        fieldId = fieldId.split(" ")[0];
+    }
     Q_ASSERT(!fieldId.contains("[") && !fieldId.contains("]"));
 }
 
