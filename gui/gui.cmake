@@ -9,4 +9,13 @@ SET(GUI_FILES
     ${CMAKE_CURRENT_LIST_DIR}/DialogExtractInfos.cpp
     ${CMAKE_CURRENT_LIST_DIR}/DialogExtractInfos.h
     ${CMAKE_CURRENT_LIST_DIR}/DialogExtractInfos.ui
+    ${CMAKE_CURRENT_LIST_DIR}/DialogFillAiPrompts.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/DialogFillAiPrompts.h
+    ${CMAKE_CURRENT_LIST_DIR}/DialogFillAiPrompts.ui
+    ${CMAKE_CURRENT_LIST_DIR}/DialogReviewAiDesc.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/DialogReviewAiDesc.h
+    ${CMAKE_CURRENT_LIST_DIR}/DialogReviewAiDesc.ui
+    ${CMAKE_CURRENT_LIST_DIR}/WidgetAdDescription.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/WidgetAdDescription.h
+    ${CMAKE_CURRENT_LIST_DIR}/WidgetAdDescription.ui
 )

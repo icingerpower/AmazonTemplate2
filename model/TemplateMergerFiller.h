@@ -8,6 +8,8 @@
 #include <xlsxdocument.h>
 
 #include "GptFiller.h"
+#include "SkuInfo.h"
+#include "PromptInfo.h"
 
 class TemplateMergerFiller
 {
@@ -20,8 +22,10 @@ public:
     static const QSet<QString> FIELD_IDS_PUT_FIRST_VALUE;
     static const QSet<QString> FIELD_IDS_EXTRA_MANDATORY;
     static const QSet<QString> FIELD_IDS_PATTERN_REMOVE_AS_MANDATORY;
+    static const QSet<QString> FIELD_IDS_ALWAY_SAME_VALUE;
     static const QStringList FIELD_IDS_COLOR_NAME;
     static const QStringList FIELD_IDS_SIZE;
+    static const QSet<QString> FIELD_IDS_CHILD_ONLY;
     enum Version{
         V01
         , V02
@@ -62,7 +66,20 @@ public:
         std::function<void(QString &logMessage)> callBackLog);
     ~TemplateMergerFiller();
     void clearPreviousChatgptReplies();
+    void preFillExcelFiles(const QString &keywordFilePath
+                        , const QStringList &sourceFilePaths
+                        , const QStringList &toFillFilePaths
+                        , std::function<void()> callBackFinishedSuccess
+                        , std::function<void(const QString &)> callbackFinishedFailure
+                        );
     void fillExcelFiles(const QString &keywordFilePath
+                        , const QStringList &sourceFilePaths
+                        , const QStringList &toFillFilePaths
+                        , std::function<void(int, int)> callBackProgress
+                        , std::function<void()> callBackFinishedSuccess
+                        , std::function<void(const QString &)> callbackFinishedFailure
+                        );
+    void fillAiDescOnly(const QString &keywordFilePath
                         , const QStringList &sourceFilePaths
                         , const QStringList &toFillFilePaths
                         , std::function<void(int, int)> callBackProgress
@@ -74,13 +91,20 @@ public:
     // ChatGpt, will be asked value, for each lang
     // We will use QSettings for crash retake
 
+    GptFiller *gptFiller() const;
+    void initGptFiller();
+
 private:
     Version _getDocumentVersion(QXlsx::Document &document) const;
+    void _readParentSkus(QXlsx::Document &document,
+                  const QString &countryCode,
+                  const QString &langCode,
+                  QMultiHash<QString, QString> &skuParent_skus);
     void _readSkus(QXlsx::Document &document,
                   const QString &countryCode,
                   const QString &langCode,
                   QStringList &skus,
-                  QHash<QString, GptFiller::SkuInfo> &sku_infos,
+                  QHash<QString, SkuInfo> &sku_infos,
                   QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_origValue,
                   bool isMainFile = false);
     void _setFilePathsToFill(const QString &keywordFilePath, const QStringList &toFillFilePaths);
@@ -92,6 +116,12 @@ private:
         , std::function<void()> callBackFinishedSuccess
         , std::function<void(const QString &)> callBackFinishedError
         );
+    void _fillDataLeftChatGptAiDescOnly(
+        std::function<void(int, int)> callBackProgress
+        , std::function<void()> callBackFinishedSuccess
+        , std::function<void(const QString &)> callBackFinishedError
+        );
+    void _fixAlwaysSameValue();
     void _createToFillXlsx();
 
     void _readKeywords(const QString &filePath);
@@ -108,7 +138,7 @@ private:
     void _preFillChildOny();
     bool _isSkuParent(const QString &sku) const;
     QHash<QString, int> _get_fieldId_index(QXlsx::Document &doc) const;
-    QHash<QString, QHash<QString, QString>> _get_sku_langCode_varTitleInfos() const;
+    QHash<QString, QHash<QString, QHash<QString, QString> > > _get_sku_countryCode_langCode_varTitleInfos() const;
     void _formatFieldId(QString &fieldId) const;
     int _getIndColSku(const QHash<QString, int> &fieldId_index) const;
     int _getIndColSkuParent(const QHash<QString, int> &fieldId_index) const;
@@ -120,7 +150,11 @@ private:
     void _recordValueAllVersion(QHash<QString, QVariant> &fieldId_value,
                                 const QString fieldId,
                                 const QVariant &value);
+    void _preFillExcelFiles(const QString &keywordFilePath
+                            , const QStringList &sourceFilePaths
+                            , const QStringList &toFillFilePaths);
     QString _getCustomInstructions(const QString &sku) const;
+    QSet<QString> getAllMandatoryFieldIds() const;
     QString m_filePathFrom;
     QStringList m_toFillFilePaths;
     QStringList m_skus;
@@ -132,8 +166,9 @@ private:
     QHash<QString, QHash<QString, QSet<QString>>> m_countryCode_langCode_fieldIdMandatory;
     QHash<QString, QHash<QString, QHash<QString, QStringList>>> m_countryCode_langCode_fieldId_possibleValues;
     QHash<QString, QHash<QString, QSet<QString>>> m_countryCode_langCode_fieldIdChildOnly;
+    QHash<QString, QHash<QString, QHash<QString, QString>>> m_countryCode_langCode_fieldId_hint;
 
-    QHash<QString, GptFiller::SkuInfo> m_sku_skuInfos;
+    QHash<QString, SkuInfo> m_sku_skuInfos;
     QMultiHash<QString, QString> m_skuParent_skus;
     QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> m_sku_countryCode_langCode_fieldId_origValue;
     //QHash<QString, QHash<QString, QHash<QString, QVariant>>> m_skuParent_langCode_fieldId_value;

@@ -60,6 +60,10 @@ void DialogExtractInfos::_connectSlots()
             &QPushButton::clicked,
             this,
             &DialogExtractInfos::readGtinCodes);
+    connect(ui->buttonGenerateModelNames,
+            &QPushButton::clicked,
+            this,
+            &DialogExtractInfos::generateModelNames);
 }
 
 DialogExtractInfos::~DialogExtractInfos()
@@ -158,6 +162,11 @@ void DialogExtractInfos::pasteTitles()
             tr("Erreur"),
             error);
     }
+}
+
+void DialogExtractInfos::generateModelNames()
+{
+    getTableInfoExtractor()->generateModelNames();
 }
 
 void DialogExtractInfos::readGtinCodes()

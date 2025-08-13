@@ -13,4 +13,20 @@ SET(MODEL_FILES
     ${CMAKE_CURRENT_LIST_DIR}/TableInfoExtractor.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ExceptionTemplateError.h
     ${CMAKE_CURRENT_LIST_DIR}/ExceptionTemplateError.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/JsonReplyAiDescription.h
+    ${CMAKE_CURRENT_LIST_DIR}/JsonReplyAiDescription.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/JsonReplyAbstract.h
+    ${CMAKE_CURRENT_LIST_DIR}/JsonReplyAbstract.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/JsonReplyTitles.h
+    ${CMAKE_CURRENT_LIST_DIR}/JsonReplyTitles.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/JsonReplySelect.h
+    ${CMAKE_CURRENT_LIST_DIR}/JsonReplySelect.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/JsonReplyText.h
+    ${CMAKE_CURRENT_LIST_DIR}/JsonReplyText.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/JsonReplyDescBullets.h
+    ${CMAKE_CURRENT_LIST_DIR}/JsonReplyDescBullets.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/JsonReplyTransBullets.h
+    ${CMAKE_CURRENT_LIST_DIR}/JsonReplyTransBullets.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/PromptInfo.h
+    ${CMAKE_CURRENT_LIST_DIR}/SkuInfo.h
 )

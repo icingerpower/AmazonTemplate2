@@ -31,6 +31,9 @@ public slots:
     void extractProductInfos();
     void viewFormatExtraInfosGpt();
     void generate();
+    void generateAiDescOnly();
+    void reviewAiDesc();
+    void runPromptsManually();
     void clearPreviousChatgptReplies();
     void displayLog(const QString &logMEssage);
 
@@ -46,5 +49,7 @@ private:
     QString m_settingsKeyExtraInfos;
     QString m_settingsKeyApi;
     TemplateMergerFiller *m_templateMergerFiller;
+    void _createTemplateMergerFiller();
+    void _setGenerateButtonsEnabled(bool enable);
 };
 #endif // MAINWINDOW_H

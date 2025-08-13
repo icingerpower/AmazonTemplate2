@@ -10,6 +10,9 @@
 #include "model/TemplateMergerFiller.h"
 #include "model/ExceptionTemplateError.h"
 
+#include "gui/DialogFillAiPrompts.h"
+#include "gui/DialogReviewAiDesc.h"
+
 #include "DialogExtractInfos.h"
 
 #include "MainWindow.h"
@@ -20,7 +23,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    ui->buttonGenerate->setEnabled(false);
+    _setGenerateButtonsEnabled(false);
     ui->buttonExtractProductInfos->setEnabled(false);
     ui->progressBar->setVisible(false);
     ui->progressBar->setMaximum(100);
@@ -35,6 +38,14 @@ MainWindow::MainWindow(QWidget *parent)
         ui->lineEditOpenAiKey->setText(key);
     }
     _connectslots();
+}
+
+void MainWindow::_setGenerateButtonsEnabled(bool enable)
+{
+    ui->buttonGenerate->setEnabled(enable);
+    ui->buttonGenAiDesc->setEnabled(enable);
+    ui->buttonReviewAiDesc->setEnabled(enable);
+    ui->buttonRunPromptsManually->setEnabled(enable);
 }
 
 MainWindow::~MainWindow()
@@ -122,6 +133,18 @@ void MainWindow::_connectslots()
             &QPushButton::clicked,
             this,
             &MainWindow::generate);
+    connect(ui->buttonGenAiDesc,
+            &QPushButton::clicked,
+            this,
+            &MainWindow::generateAiDescOnly);
+    connect(ui->buttonReviewAiDesc,
+            &QPushButton::clicked,
+            this,
+            &MainWindow::reviewAiDesc);
+    connect(ui->buttonRunPromptsManually,
+            &QPushButton::clicked,
+            this,
+            &MainWindow::runPromptsManually);
     connect(ui->buttonExtractProductInfos,
             &QPushButton::clicked,
             this,
@@ -165,30 +188,18 @@ void MainWindow::_enableGenerateButtonIfValid()
     if (!ui->lineEditOpenAiKey->text().isEmpty()
         && !ui->lineEditTo->text().isEmpty())
     {
-        ui->buttonGenerate->setEnabled(true);
+        _setGenerateButtonsEnabled(true);
     }
     else
     {
-        ui->buttonGenerate->setEnabled(false);
+        _setGenerateButtonsEnabled(false);
     }
 }
 
 void MainWindow::generate()
 {
-    if (m_templateMergerFiller != nullptr)
-    {
-        auto *templateMergerFiller = m_templateMergerFiller;
-        QTimer::singleShot(5000, this, [templateMergerFiller]{
-            delete templateMergerFiller;
-        });
-    }
-    m_templateMergerFiller = new TemplateMergerFiller{ui->lineEditTo->text(),
-                                                      ui->textEditExtraInfos->toPlainText(),
-                                                      ui->lineEditOpenAiKey->text(),
-                                                      [this](const QString &logMessage)
-                                                      {
-                                                          displayLog(logMessage);
-                                                      }};
+    _setGenerateButtonsEnabled(false);
+    _createTemplateMergerFiller();
     try
     {
         const auto &keywordsFileInfos = m_workingDir.entryInfoList(
@@ -204,6 +215,59 @@ void MainWindow::generate()
             const auto &keywordFilePath = keywordsFileInfos.last().absoluteFilePath();
             ui->progressBar->setVisible(true);
             m_templateMergerFiller->fillExcelFiles(
+                keywordFilePath,
+                getFileModelSources()->getFilePaths()
+                , getFileModelToFill()->getFilePaths()
+                , [this](int progress, int max){
+                    ui->progressBar->setMaximum(max);
+                    ui->progressBar->setValue(progress);
+                }
+                , [this](){
+                    ui->progressBar->hide();
+                    QMessageBox::information(
+                        this,
+                        tr("Files created"),
+                        tr("The template files were created successfully"));
+                    _setGenerateButtonsEnabled(true);
+                    }
+                , [this](const QString &error){
+                    ui->progressBar->hide();
+                    QMessageBox::information(
+                        this,
+                        tr("Error"),
+                        tr("The template files were not created due to an error like ChatGpt. %1").arg(error));
+                    _setGenerateButtonsEnabled(true);
+                    }
+                );
+        }
+    }
+    catch (const ExceptionTemplateError &exception)
+    {
+        _setGenerateButtonsEnabled(true);
+        QMessageBox::warning(this,
+                             exception.title(),
+                             exception.error());
+    }
+}
+
+void MainWindow::generateAiDescOnly()
+{
+    _createTemplateMergerFiller();
+    try
+    {
+        const auto &keywordsFileInfos = m_workingDir.entryInfoList(
+            QStringList{"keywor*.txt", "Keywor*.txt"}, QDir::Files, QDir::Name);
+        if (keywordsFileInfos.size() == 0)
+        {
+            QMessageBox::information(this,
+                                     tr("Keywords file missing"),
+                                     tr("The keywords.txt file is missing"));
+        }
+        else
+        {
+            const auto &keywordFilePath = keywordsFileInfos.last().absoluteFilePath();
+            ui->progressBar->setVisible(true);
+            m_templateMergerFiller->fillAiDescOnly(
                 keywordFilePath,
                 getFileModelSources()->getFilePaths()
                 , getFileModelToFill()->getFilePaths()
@@ -234,7 +298,123 @@ void MainWindow::generate()
                              exception.title(),
                              exception.error());
     }
+
 }
+
+void MainWindow::_createTemplateMergerFiller()
+{
+    if (m_templateMergerFiller != nullptr)
+    {
+        auto *templateMergerFiller = m_templateMergerFiller;
+        QTimer::singleShot(5000, this, [templateMergerFiller]{
+            delete templateMergerFiller;
+        });
+    }
+    m_templateMergerFiller = new TemplateMergerFiller{ui->lineEditTo->text(),
+            ui->textEditExtraInfos->toPlainText(),
+            ui->lineEditOpenAiKey->text(),
+            [this](const QString &logMessage)
+    {
+        displayLog(logMessage);
+    }};
+}
+
+void MainWindow::runPromptsManually()
+{
+    _createTemplateMergerFiller();
+    m_templateMergerFiller->initGptFiller();
+    try
+    {
+        const auto &keywordsFileInfos = m_workingDir.entryInfoList(
+                    QStringList{"keywor*.txt", "Keywor*.txt"}, QDir::Files, QDir::Name);
+        if (keywordsFileInfos.size() == 0)
+        {
+            QMessageBox::information(this,
+                                     tr("Keywords file missing"),
+                                     tr("The keywords.txt file is missing"));
+        }
+        else
+        {
+            const auto &keywordFilePath = keywordsFileInfos.last().absoluteFilePath();
+
+            m_templateMergerFiller->preFillExcelFiles(
+                        keywordFilePath,
+                        getFileModelSources()->getFilePaths()
+                        , getFileModelToFill()->getFilePaths()
+                        , [this](){
+                auto gptFiller = m_templateMergerFiller->gptFiller();
+                const auto &prompts = gptFiller->getProductAiDescriptionsPrompts();
+                DialogFillAiPrompts dialog{
+                    prompts,
+                            gptFiller, this};
+                dialog.exec();
+            }
+
+            , [this](const QString &error){
+                ui->progressBar->hide();
+                QMessageBox::information(
+                            this,
+                            tr("Error"),
+                            tr("The template files were not created due to an error like ChatGpt. %1").arg(error));
+            });
+        }
+    }
+    catch (const ExceptionTemplateError &exception)
+    {
+        QMessageBox::warning(this,
+                             exception.title(),
+                             exception.error());
+    }
+}
+
+void MainWindow::reviewAiDesc()
+{
+    _createTemplateMergerFiller();
+    m_templateMergerFiller->initGptFiller();
+    try
+    {
+        const auto &keywordsFileInfos = m_workingDir.entryInfoList(
+                    QStringList{"keywor*.txt", "Keywor*.txt"}, QDir::Files, QDir::Name);
+        if (keywordsFileInfos.size() == 0)
+        {
+            QMessageBox::information(this,
+                                     tr("Keywords file missing"),
+                                     tr("The keywords.txt file is missing"));
+        }
+        else
+        {
+            const auto &keywordFilePath = keywordsFileInfos.last().absoluteFilePath();
+
+            m_templateMergerFiller->preFillExcelFiles(
+                        keywordFilePath,
+                        getFileModelSources()->getFilePaths()
+                        , getFileModelToFill()->getFilePaths()
+                        , [this](){
+                auto gptFiller = m_templateMergerFiller->gptFiller();
+                const auto &prompts = gptFiller->getProductAiDescriptionsPrompts();
+                DialogReviewAiDesc dialog{gptFiller, this};
+                dialog.exec();
+            }
+
+            , [this](const QString &error){
+                ui->progressBar->hide();
+                QMessageBox::information(
+                            this,
+                            tr("Error"),
+                            tr("The template files were not created due to an error like ChatGpt. %1").arg(error));
+            });
+        }
+    }
+    catch (const ExceptionTemplateError &exception)
+    {
+        QMessageBox::warning(this,
+                             exception.title(),
+                             exception.error());
+    }
+
+
+}
+
 
 void MainWindow::clearPreviousChatgptReplies()
 {

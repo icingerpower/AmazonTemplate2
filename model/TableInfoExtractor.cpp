@@ -199,6 +199,31 @@ QString TableInfoExtractor::pasteTitles()
     return QString{};
 }
 
+void TableInfoExtractor::generateModelNames()
+{
+    QStringList modelNames;
+    for (const auto &stringList : m_listOfStringList)
+    {
+        auto modelName = stringList[IND_SKU];
+        if (modelName.startsWith("P-"))
+        {
+            modelName.clear();
+        }
+        else if (modelName.startsWith("CJ"))
+        {
+            modelName.remove(modelName.size()-4, 4);
+        }
+        else if (modelName.contains("-"))
+        {
+            modelName = modelName.split("-")[0];
+        }
+
+        modelNames << modelName;
+    }
+    auto *clipboard = QApplication::clipboard();
+    clipboard->setText(modelNames.join("\n"));
+}
+
 void TableInfoExtractor::_clearColumn(int colIndex)
 {
     if (m_listOfStringList.size() > 0)

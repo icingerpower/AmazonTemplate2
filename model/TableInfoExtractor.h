@@ -44,6 +44,7 @@ public slots:
     void clear();
     QString pasteSKUs(); // Returns the error if any
     QString pasteTitles(); // Returns the error if any
+    void generateModelNames();
 
 private:
     static const QStringList HEADER;
