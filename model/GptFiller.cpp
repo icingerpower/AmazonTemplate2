@@ -8,45 +8,13 @@
 #include "JsonReplyDescBullets.h"
 #include "JsonReplyTransBullets.h"
 #include "JsonReplyTitles.h"
+#include "TemplateMergerFiller.h"
 
 #include "GptFiller.h"
 
 #include "../common/openai/OpenAi.h"
 
 const int GptFiller::N_RETRY{6};
-
-/*
-const QString GptFiller::PROMPT_FIRST{
-    "I am selling the product of the attached image in amazon (FBA). "
-    "You need to help me fill the product page template. "
-    "The product is new, from China, without hazmat materials. "
-    "We use international metric system. "
-    "Inventory is Year round replenishable. "
-    "For each field, I will send you json informations. "
-    "You need to reply as json. Only return as reply the content of the "
-    "json object \"return\" replacing TODO by the field values. "
-    "If You are not sure guess the best choice as you can only"
-    " reply in json without adding any details or explanation."
-};
-
-const QString GptFiller::PROMPT_FIRST_NO_IMAGE{
-    "I am selling a product of category %1 in amazon (FBA). "
-    "You need to help me fill the product page template. "
-    "The product is new, from China, without hazmat materials. "
-    "We use international metric system. "
-    "Inventory is Year round replenishable. "
-    "For each field, I will send you json informations. "
-    "You need to reply as json. Only return as reply the content of the "
-    "json object \"return\" replacing TODO by the field values. "
-    "If You are not sure guess the best choice as you can only"
-    " reply in json without adding any details or explanation."
-};
-
-
-const QString GptFiller::PROMPT_INTRODUCE_JSON{
-    "Here is the first question that I am asking in json format:"
-};
-//*/
 
 const QString GptFiller::PROMPT_ASK_NOT_MANDATORY{
     "I am creating product pages on amazon with a page template."
@@ -57,64 +25,6 @@ const QString GptFiller::PROMPT_ASK_NOT_MANDATORY{
     "You need to reply in with a json list, in the following format: "
     "[\"field1\", \"field2\"]"
 };
-
-/*
-const QString GptFiller::PROMPT_TEXT_START{
-    "I am selling the product of the attached image in amazon (FBA). "
-};
-
-const QString GptFiller::PROMPT_TEXT_END_DESCRIPTION{
-    "Write an Amazon product description of ≤1500 characters including emoji and HTML using only <p>, <b>, <ul>, <li>, <br>."
-            "\nStructure:"
-                        "\n<p> Hook: connect with the buyer and mention occasions/uses."
-        "\n<ul> 5 benefit-led bullets (each starts with a bold benefit label)."
-                               "\n<p> Close with reassurance/compatibility/care (facts only)."
-                                                 "\nTone: confident, benefit-oriented, no hype, no unverifiable superlatives."
-                                         "\nCompliance: no medical/therapeutic claims, no competitor mentions, no shipping/price promises, no guarantees unless explicitly provided."
-                                                              "\nSEO: Find SEO keywords and include them naturally once (no stuffing)."
-                                                                    "\nIf any required input is missing, omit it—do not invent."
-        "\nBefore returning, self-check: character count ≤1500; only allowed tags; bullets are benefit-led and policy-safe. Return only the HTML."
-                                           "\nPlease do this for the following languages: %1"
-                        "\nReply with a json object in the following json format (one key per lang):"
-    "{\"EN\":{\"description\":\"TODO\", \"charCount\": 1255, \"policy_ok\": true, \"used_keywords\":\"TODO\"},"
-    ",\"DE\":{\"description\":\"TODO\", \"langCode\": \"de\", \"charCount\": 1255, \"policy_ok\": true, \"used_keywords\":\"TODO\"}}"
-};
-
-const QString GptFiller::PROMPT_TEXT_END_BULLET_POINTS{
-    "\nWrite exactly FIVE Amazon \"Key Product Features\" bullet points."
-    "\nConstraints:"
-    "\n- Each bullet ≤ 250 characters (including spaces)."
-    "\n- Each bullet starts with one emoji and can't have more than one."
-    "\n- Hook: The first bullet connect with the buyer and mention occasions."
-    "\n- Start each other bullet with a short <Benefit label>: then a clear outcome (e.g., \"Easy care: Machine-wash cold\")."
-    "\n- Use concise, skimmable phrasing; sentence fragments are fine."
-    "\nTone: confident, benefit-oriented, factual; no hype or unverifiable superlatives."
-    "\nCompliance (strict): no medical/therapeutic claims; no competitor mentions; no shipping/price promises; no guarantees/warranties/certifications unless explicitly provided in inputs; avoid #1/best/100% claims."
-    "\nUse local decimal separators and units (e.g., metric for France, imperial for US) according to locale. "
-    "\nSEO: Find SEO keywords and include them naturally ONCE across the five bullets (no stuffing)."
-    "\nImage vs text: Use the image only for high-level cues. If a fact isn’t in the inputs, omit it—do not invent."
-    "\nBefore returning, SELF-CHECK for each language: exactly 5 bullets; each ≤ 250 chars; no HTML; policy-safe; keywords used at most once."
-    "\nPlease do this for the following languages: %1"
-    "\nReturn ONLY the following JSON object with one key per lang (no extra text):"
-    "{\"DE\":{\"bullets\":[\"...\",\"...\",\"...\",\"...\",\"...\"], \"charCounts\":[0,0,0,0,0], \"policy_ok\": true, \"used_keywords\":[\"...\"]},"
-    "\"EN\":{\"bullets\":[\"...\",\"...\",\"...\",\"...\",\"...\"],, \"charCounts\":[0,0,0,0,0], \"policy_ok\": true, \"langCode\": \"en\", \"used_keywords\":[\"...\"]}}"
-};
-//, \"boolean_that_confirms_if_you_were_able_to_access_to_previous_image_from_previous_prompt\":TODO
-
-
-const QString GptFiller::PROMPT_TEXT_END_TITLE{
-    "\nPlease translate the title %1 from %2 to the following languages: %3."
-    "\nConstraints:"
-    "\nCompliance (strict): no medical/therapeutic claims; no competitor mentions; no shipping/price promises; no guarantees/warranties/certifications unless explicitly provided in inputs; avoid #1/best/100% claims."
-    "\nSEO: Find SEO keywords and include them naturally ONCE across the title."
-    "\nNo emoji and no html."
-    "\nTitles can't more than 150 characters."
-    "\nDon't include color information."
-    "\nReturn ONLY the following JSON object with one key per lang (no extra text):"
-    "{\"ES\":{\"title\":\"TODO\", \"charCount\": 144, \"policy_ok\": true, \"used_keywords\":\"TODO\"}"
-    ", {\"DE\":{\"title\":\"TODO\", \"charCount\": 144, \"policy_ok\": true, \"used_keywords\":\"TODO\"}}"
-};
-//*/
 
 GptFiller::GptFiller(const QString &workingDir,
                      const QString &apiKey,
@@ -138,7 +48,6 @@ void GptFiller::init(
         , const QString &productType
         , const QSet<QString> &fieldIdsToIgnore
         , const QHash<QString, SkuInfo> &sku_infos
-        , const QHash<QString, QHash<QString, QHash<QString, QString>>> &sku_countryCode_langCode_varTitleInfos
         , const QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_origValue
         , const QHash<QString, QHash<QString, QHash<QString, QStringList>>> &countryCode_langCode_fieldId_possibleValues
         , const QHash<QString, QHash<QString, QSet<QString>>> &countryCode_langCode_fieldIdMandatory
@@ -157,7 +66,6 @@ void GptFiller::init(
     {
         m_skuParent_skus.insert(it.value().skuParent, it.key());
     }
-    m_sku_countryCode_langCode_varTitleInfos = sku_countryCode_langCode_varTitleInfos;
     m_countryCode_langCode_fieldIdChildOnly = &countryCode_langCode_fieldIdChildOnly;
     m_sku_countryCode_langCode_fieldId_origValue = &sku_countryCode_langCode_fieldId_origValue;
     m_countryCode_langCode_fieldId_possibleValues = &countryCode_langCode_fieldId_possibleValues;
@@ -445,7 +353,10 @@ void GptFiller::askFillingTransBullets(
                     {
                         const auto &langCodeTo = itLangCode.key();
 
+                        int sizeBefore = (*m_sku_countryCode_langCode_fieldId_value)[sku].size();
                         const auto &fieldId_value = (*m_sku_countryCode_langCode_fieldId_value)[sku][countryCodeTo][langCodeTo];
+                        int sizeAfter = (*m_sku_countryCode_langCode_fieldId_value)[sku].size();
+                        Q_ASSERT(sizeBefore == sizeAfter);
                         for (const auto &fieldId : fieldIds)
                         {
                             if (!fieldId_value.contains(fieldId))
@@ -475,6 +386,8 @@ void GptFiller::askFillingTransBullets(
                                 }
                             }
                         }
+                        int sizeAfter2 = (*m_sku_countryCode_langCode_fieldId_value)[sku].size();
+                        Q_ASSERT(sizeBefore == sizeAfter2);
                     }
                 }
             }
@@ -722,7 +635,8 @@ void GptFiller::askFillingSelectsAndTexts(
     QHash<QString, QSet<QString>> skuParents_colorsDone;
 
     QHash<QString, QHash<QString, QHash<QString, JsonSourceInfos>>> skuParent_color_fieldId_jsonSourceText;
-    QHash<QString, QHash<QString, QHash<QString, JsonSourceInfos>>> skuParent_color_fieldId_jsonSourceSelect;
+    QHash<QString, QHash<QString, QHash<QString, QHash<QString, QHash<QString, JsonSourceInfos>>>>>
+            skuParent_color_countryCode_langCode_fieldId_jsonSourceSelect;
     for (auto itSku = m_sku_countryCode_langCode_fieldId_value->begin();
          itSku != m_sku_countryCode_langCode_fieldId_value->end(); ++itSku)
     {
@@ -730,22 +644,22 @@ void GptFiller::askFillingSelectsAndTexts(
         bool isParent = m_skuParent_skus.contains(sku);
         const auto &skuParent = isParent ? sku : (*m_sku_infos)[sku].skuParent;
         const auto &colorOrig = isParent ? QString{} :(*m_sku_infos)[sku].colorOrig;
-        for (auto itCountryCode = m_countryCode_langCode_fieldIdMandatory->begin();
-             itCountryCode != m_countryCode_langCode_fieldIdMandatory->end(); ++itCountryCode)
+        if (!skuParents_colorsDone[skuParent].contains(colorOrig))
         {
-            const auto &countryCodeTo = itCountryCode.key();
-            for (auto itLangCode = itCountryCode.value().begin();
-                 itLangCode != itCountryCode.value().end(); ++itLangCode)
+            for (auto itCountryCode = m_countryCode_langCode_fieldIdMandatory->begin();
+                 itCountryCode != m_countryCode_langCode_fieldIdMandatory->end(); ++itCountryCode)
             {
-                const auto &langCodeTo = itLangCode.key();
-                for (const auto &fieldId : itLangCode.value())
+                const auto &countryCodeTo = itCountryCode.key();
+                for (auto itLangCode = itCountryCode.value().begin();
+                     itLangCode != itCountryCode.value().end(); ++itLangCode)
                 {
-                    if (!isParent || !(*m_countryCode_langCode_fieldIdChildOnly)[countryCodeTo][langCodeTo].contains(fieldId))
+                    const auto &langCodeTo = itLangCode.key();
+                    for (const auto &fieldId : itLangCode.value())
                     {
-                        if (!m_fieldIdsToIgnore->contains(fieldId)
-                                && !(*m_sku_countryCode_langCode_fieldId_value)[sku][countryCodeTo][langCodeTo].contains(fieldId))
+                        if (!isParent || !(*m_countryCode_langCode_fieldIdChildOnly)[countryCodeTo][langCodeTo].contains(fieldId))
                         {
-                            if (!skuParents_colorsDone[skuParent].contains(colorOrig))
+                            if (!m_fieldIdsToIgnore->contains(fieldId)
+                                    && !(*m_sku_countryCode_langCode_fieldId_value)[sku][countryCodeTo][langCodeTo].contains(fieldId))
                             {
                                 if ((*m_countryCode_langCode_fieldId_possibleValues)[countryCodeTo][langCodeTo].contains(fieldId))
                                 { // Value to select
@@ -757,7 +671,15 @@ void GptFiller::askFillingSelectsAndTexts(
                                                 fieldId,
                                                 m_sku_countryCode_langCode_varTitleInfos))
                                     {
-                                        JsonSourceInfos &jsonSourceInfos = skuParent_color_fieldId_jsonSourceSelect[skuParent][colorOrig][fieldId];
+                                        QJsonArray jsonPossibleValues;
+                                        const auto &possibleValues = (*m_countryCode_langCode_fieldId_possibleValues)[countryCodeTo][langCodeTo][fieldId];
+                                        for (const auto &possibleValue : possibleValues)
+                                        {
+                                            jsonPossibleValues << possibleValue;
+                                        }
+                                        Q_ASSERT(jsonPossibleValues.size() > 1);
+                                        Q_ASSERT(jsonPossibleValues.size() < 30); // Implement a rule with TemplateMergerFiller::AUTO_SELECT_PATTERN_POSSIBLE_VALUES
+                                        JsonSourceInfos &jsonSourceInfos = skuParent_color_countryCode_langCode_fieldId_jsonSourceSelect[skuParent][colorOrig][countryCodeTo][langCodeTo][fieldId];
                                         jsonSourceInfos.countryCodesTo << countryCodeTo;
                                         jsonSourceInfos.langCodesTo << langCodeTo;
                                         if (jsonSourceInfos.object.size() == 0)
@@ -775,12 +697,6 @@ void GptFiller::askFillingSelectsAndTexts(
                                         {
                                             jsonSourceInfos.object[countryCodeTo] = QJsonObject{};
                                         }
-                                        QJsonArray jsonPossibleValues;
-                                        for (const auto &possibleValue : (*m_countryCode_langCode_fieldId_possibleValues)[countryCodeTo][langCodeTo][fieldId])
-                                        {
-                                            jsonPossibleValues << possibleValue;
-                                        }
-                                        Q_ASSERT(jsonPossibleValues.size() > 1);
                                         auto countryObject = jsonSourceInfos.object[countryCodeTo].toObject();
                                         QJsonObject valuesObject;
                                         valuesObject["values"] = jsonPossibleValues;
@@ -836,7 +752,7 @@ void GptFiller::askFillingSelectsAndTexts(
         skuParents_colorsDone[skuParent].insert(colorOrig);
     }
 
-    _askFillingSelects(skuParent_color_fieldId_jsonSourceSelect, callbackFinishedSuccess, callbackFinishedFailure);
+    _askFillingSelects(skuParent_color_countryCode_langCode_fieldId_jsonSourceSelect, callbackFinishedSuccess, callbackFinishedFailure);
     _askFillingTexts(skuParent_color_fieldId_jsonSourceText, callbackFinishedSuccess, callbackFinishedFailure);
 
     if (m_nQueries == 0)
@@ -850,92 +766,101 @@ void GptFiller::askFillingSelectsAndTexts(
 }
 
 void GptFiller::_askFillingSelects(
-        const QHash<QString, QHash<QString, QHash<QString, JsonSourceInfos>>> &skuParent_color_fieldId_jsonSourceSelect
+        const QHash<QString, QHash<QString, QHash<QString, QHash<QString, QHash<QString, JsonSourceInfos>>>>>
+        &skuParent_color_countryCode_langCode_fieldId_jsonSourceSelect
         , std::function<void ()> callbackFinishedSuccess
         , std::function<void (const QString &)> callbackFinishedFailure)
 {
-     for (auto itSkuParent = skuParent_color_fieldId_jsonSourceSelect.begin();
-         itSkuParent != skuParent_color_fieldId_jsonSourceSelect.end(); ++itSkuParent)
+    for (auto itSkuParent = skuParent_color_countryCode_langCode_fieldId_jsonSourceSelect.begin();
+         itSkuParent != skuParent_color_countryCode_langCode_fieldId_jsonSourceSelect.end(); ++itSkuParent)
     {
         const auto &skuParent = itSkuParent.key();
         for (auto itColor = itSkuParent.value().begin();
              itColor != itSkuParent.value().end(); ++itColor)
         {
             const auto &colorOrig = itColor.key();
-            for (auto itFieldId = itColor.value().begin();
-                 itFieldId != itColor.value().end(); ++itFieldId)
+            for (auto itCountryCode = itColor.value().begin();
+                 itCountryCode != itColor.value().end(); ++itCountryCode)
             {
-                const auto &fieldId = itFieldId.key();
-                const auto &jsonObjectSource = itFieldId.value();
-                const auto &jsonSource = _getStringFromJson(jsonObjectSource.object);
-                const auto &skuChild = m_skuParent_skus.values(skuParent);
-                const auto &skuFirst = skuChild[0];
-                const auto &customInstructions = (*m_sku_infos)[skuFirst].customInstructions;
-                const auto &aiDescription = m_jsonReplyAiDescription->get_description_ai(skuParent, (*m_sku_infos)[skuFirst].colorOrig);
-                Q_ASSERT(!aiDescription.isEmpty());
-                const auto &countryCodesTo = jsonObjectSource.countryCodesTo;
-                const auto &langCodesTo = jsonObjectSource.langCodesTo;
-                QString question{
-                    JsonReplySelect::PROMPT.arg
-                            (aiDescription, customInstructions, jsonSource)};
-                ++m_nQueries;
-                qDebug().noquote() << "\nQUESTION GptFiller::_askFillingSelects SELECTS:" << fieldId << "-" << question;
-                OpenAi::instance()->askQuestion(
-                            question
-                            , skuParent
-                            , N_RETRY
-                            , "gpt-4.1-mini"
-                            , [this, skuParent, colorOrig, fieldId, countryCodesTo, langCodesTo](const QString &jsonReply) -> bool{
-                    qDebug().noquote() << "REPLY GptFiller::_askFillingSelects SELECT:" << fieldId << "-" << jsonReply;
-                    QList<QSet<QString>> listPossibleValues;
-                    for (int i=0; i<countryCodesTo.size(); ++i)
+                for (auto itLangCode = itCountryCode.value().begin();
+                     itLangCode != itCountryCode.value().end(); ++itLangCode)
+                {
+                    for (auto itFieldId = itLangCode.value().begin();
+                         itFieldId != itLangCode.value().end(); ++itFieldId)
                     {
-                        const auto &possibleValues = (*m_countryCode_langCode_fieldId_possibleValues)
-                                [countryCodesTo[i]][langCodesTo[i]][fieldId];
-                        QSet<QString> setPossibleValues{possibleValues.begin(), possibleValues.end()};
-                        listPossibleValues << setPossibleValues;
+                        const auto &fieldId = itFieldId.key();
+                        const auto &jsonObjectSource = itFieldId.value();
+                        const auto &jsonSource = _getStringFromJson(jsonObjectSource.object);
+                        const auto &skuChild = m_skuParent_skus.values(skuParent);
+                        const auto &skuFirst = skuChild[0];
+                        const auto &customInstructions = (*m_sku_infos)[skuFirst].customInstructions;
+                        const auto &aiDescription = m_jsonReplyAiDescription->get_description_ai(skuParent, (*m_sku_infos)[skuFirst].colorOrig);
+                        Q_ASSERT(!aiDescription.isEmpty());
+                        const auto &countryCodesTo = jsonObjectSource.countryCodesTo;
+                        const auto &langCodesTo = jsonObjectSource.langCodesTo;
+                        QString question{
+                            JsonReplySelect::PROMPT.arg
+                                    (aiDescription, customInstructions, jsonSource)};
+                        ++m_nQueries;
+                        qDebug().noquote() << "\nQUESTION GptFiller::_askFillingSelects SELECTS:" << fieldId << "-" << question;
+                        OpenAi::instance()->askQuestion(
+                                    question
+                                    , skuParent
+                                    , N_RETRY
+                                    , "gpt-4.1-mini"
+                                    , [this, skuParent, colorOrig, fieldId, countryCodesTo, langCodesTo](const QString &jsonReply) -> bool{
+                            qDebug().noquote() << "REPLY GptFiller::_askFillingSelects SELECT:" << fieldId << "-" << jsonReply;
+                            QList<QSet<QString>> listPossibleValues;
+                            for (int i=0; i<countryCodesTo.size(); ++i)
+                            {
+                                const auto &possibleValues = (*m_countryCode_langCode_fieldId_possibleValues)
+                                        [countryCodesTo[i]][langCodesTo[i]][fieldId];
+                                QSet<QString> setPossibleValues{possibleValues.begin(), possibleValues.end()};
+                                listPossibleValues << setPossibleValues;
+                            }
+                            if (m_jsonReplySelect->isJsonReplyCorrect(
+                                        skuParent
+                                        , colorOrig
+                                        , countryCodesTo
+                                        , langCodesTo
+                                        , listPossibleValues
+                                        , fieldId
+                                        , jsonReply))
+                            {
+                                return m_jsonReplySelect->tryToRecordReply(
+                                            skuParent
+                                            , colorOrig
+                                            , countryCodesTo
+                                            , langCodesTo
+                                            , fieldId
+                                            , m_sku_countryCode_langCode_varTitleInfos
+                                            , jsonReply
+                                            );
+                            }
+                            return false;
+                        }
+                        , [this, callbackFinishedSuccess](const QString &jsonReply){
+                            ++m_nDone;
+                            qDebug() << "GptFiller::askFillingSelectsAndTexts OK" << m_nDone << "/" << m_nQueries;
+                            if (m_nDone == m_nQueries)
+                            {
+                                callbackFinishedSuccess();
+                            }
+                        }
+                        , [this, callbackFinishedFailure](const QString &jsonReply){
+                            ++m_nDone;
+                            qDebug() << "GptFiller::askFillingSelectsAndTexts KO" << m_nDone << "/" << m_nQueries;
+                            if (m_nDone == m_nQueries)
+                            {
+                                callbackFinishedFailure("Select: " + jsonReply);
+                            }
+                        }
+                        );
                     }
-                    if (m_jsonReplySelect->isJsonReplyCorrect(
-                                skuParent
-                                , colorOrig
-                                , countryCodesTo
-                                , langCodesTo
-                                , listPossibleValues
-                                , fieldId
-                                , jsonReply))
-                    {
-                        return m_jsonReplySelect->tryToRecordReply(
-                                    skuParent
-                                    , colorOrig
-                                    , countryCodesTo
-                                    , langCodesTo
-                                    , fieldId
-                                    , m_sku_countryCode_langCode_varTitleInfos
-                                    , jsonReply
-                                    );
-                    }
-                    return false;
                 }
-                , [this, callbackFinishedSuccess](const QString &jsonReply){
-                    ++m_nDone;
-                    qDebug() << "GptFiller::askFillingSelectsAndTexts OK" << m_nDone << "/" << m_nQueries;
-                    if (m_nDone == m_nQueries)
-                    {
-                        callbackFinishedSuccess();
-                    }
-                }
-                , [this, callbackFinishedFailure](const QString &jsonReply){
-                    ++m_nDone;
-                    qDebug() << "GptFiller::askFillingSelectsAndTexts KO" << m_nDone << "/" << m_nQueries;
-                    if (m_nDone == m_nQueries)
-                    {
-                        callbackFinishedFailure("Select: " + jsonReply);
-                    }
-                }
-                );
             }
         }
-     }
+    }
 }
 
 void GptFiller::_askFillingTexts(
@@ -959,7 +884,15 @@ void GptFiller::_askFillingTexts(
                 const auto &jsonSource = _getStringFromJson(jsonObjectSource.object);
                 const auto &skuChild = m_skuParent_skus.values(skuParent);
                 const auto &skuFirst = skuChild[0];
-                const auto &customInstructions = (*m_sku_infos)[skuFirst].customInstructions;
+                auto customInstructions = (*m_sku_infos)[skuFirst].customInstructions;
+                if (fieldId.contains("style"))
+                {
+                    customInstructions += ". Your reply \"value\" should be under 60 characters.";
+                }
+                else if (fieldId.contains("color") || fieldId.contains("type"))
+                {
+                    customInstructions += ". Your reply \"value\" should be under 30 characters.";
+                }
                 const auto &aiDescription = m_jsonReplyAiDescription->get_description_ai(skuParent, (*m_sku_infos)[skuFirst].colorOrig);
                 Q_ASSERT(!aiDescription.isEmpty());
                 const auto &countryCodesTo = jsonObjectSource.countryCodesTo;
@@ -1012,6 +945,7 @@ void GptFiller::askFillingTitles(
         std::function<void ()> callbackFinishedSuccess
         , std::function<void (const QString &)> callbackFinishedFailure)
 {
+    m_sku_countryCode_langCode_varTitleInfos = _get_sku_countryCode_langCode_varTitleInfos();
     m_nDone = 0;
     m_nQueries = 0;
     QSet<QString> skuParentsDone;
@@ -1036,8 +970,7 @@ void GptFiller::askFillingTitles(
                     {
                         const auto &langCodeTo = itLangCode.key();
 
-                        const auto &fieldId_value = (*m_sku_countryCode_langCode_fieldId_value)[sku][countryCodeTo][langCodeTo];
-                        if (!_containsTitle(fieldId_value))
+                        if (!_containsTitle(skuParent, countryCodeTo, langCodeTo))
                         {
                             if (!m_jsonReplyTitles->reloadJson(
                                         countryCodeTo,
@@ -1140,6 +1073,74 @@ void GptFiller::_askFillingTitles(
     }
 }
 
+QHash<QString, QHash<QString, QHash<QString, QString> > > GptFiller::_get_sku_countryCode_langCode_varTitleInfos() const
+{
+    QHash<QString, QHash<QString, QHash<QString, QString>>> sku_countryCode_langCode_varTitleInfos;
+    for (auto itSku = m_sku_countryCode_langCode_fieldId_value->begin();
+         itSku != m_sku_countryCode_langCode_fieldId_value->end(); ++itSku)
+    {
+        const auto &sku = itSku.key();
+        if (!m_skuParent_skus.contains(sku))
+        {
+            const auto &infos = (*m_sku_infos)[sku];
+            for (auto itCountryCode = itSku.value().begin();
+                 itCountryCode != itSku.value().end(); ++itCountryCode)
+            {
+                const auto &countryCode = itCountryCode.key();
+                for (auto itLangCode = itCountryCode.value().begin();
+                     itLangCode != itCountryCode.value().end(); ++itLangCode)
+                {
+                    const auto &langCode = itLangCode.key();
+                    if (!sku_countryCode_langCode_varTitleInfos[sku][countryCode].contains(langCode))
+                    {
+                            if (countryCode == "BE" && langCode == "FR")
+                            {
+                                int TEMP=10;++TEMP;
+                            }
+                        QStringList varElements;
+                        const auto &fieldId_value = itLangCode.value();
+                        if (!infos.colorOrig.isEmpty())
+                        {
+                            for (const auto &fieldIdColor : TemplateMergerFiller::FIELD_IDS_COLOR_NAME)
+                            {
+                                if (fieldId_value.contains(fieldIdColor))
+                                {
+                                    varElements << fieldId_value[fieldIdColor].toString();
+                                    break;
+                                }
+                            }
+                        }
+                        if (!infos.sizeOrig.isEmpty())
+                        {
+                            QString sizeTitle;
+                            if (infos.sizeTitleOrig.contains("="))
+                            {
+                                const auto &elementsSize = infos.sizeTitleOrig.split("=");
+                                sizeTitle = elementsSize[0] + "=";
+                            }
+                            for (const auto &fieldIdSize : TemplateMergerFiller::FIELD_IDS_SIZE)
+                            {
+                                if (fieldId_value.contains(fieldIdSize))
+                                {
+                                    sizeTitle += fieldId_value[fieldIdSize].toString();
+                                    varElements << sizeTitle;
+                                    break;
+                                }
+                            }
+                            Q_ASSERT(!sizeTitle.isEmpty());
+                        }
+                        if (varElements.size() > 0)
+                        {
+                            sku_countryCode_langCode_varTitleInfos[sku][countryCode][langCode] = "(" + varElements.join(", ") + ")";
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return sku_countryCode_langCode_varTitleInfos;
+}
+
 JsonReplyAiDescription *GptFiller::jsonReplyAiDescription() const
 {
     return m_jsonReplyAiDescription;
@@ -1225,10 +1226,21 @@ bool GptFiller::_containsDescription(
             || fieldId_value.contains("product_description#1.value");
 }
 
-bool GptFiller::_containsTitle(const QHash<QString, QVariant> &fieldId_value) const
+bool GptFiller::_containsTitle(
+        const QString &skuParent
+        , const QString &countryCode
+        , const QString &langCode) const
 {
-    return fieldId_value.contains("item_name")
-            || fieldId_value.contains("item_name#1.value");
+    auto skus = m_skuParent_skus.values(skuParent);
+    skus << skuParent;
+    for (const auto &sku : skus)
+    {
+        if (!(*m_sku_countryCode_langCode_fieldId_value)[sku][countryCode][langCode].contains("item_name"))
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 

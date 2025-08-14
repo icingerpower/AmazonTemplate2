@@ -5,7 +5,7 @@ const QString JsonReplyTitles::PROMPT
             R"(I need to create a product page for amazon (FBA) with a page template to fill.
 This is the description done from another prompt that analysed the product images:
 %1
-You will suggest titles with local Google SEO keywords (no stuffing to keep title naturals)
+You will suggest natural titles with around 4 local Google SEO keywords / title (no stuffing to keep each title naturals)
 Compliance (strict): no medical/therapeutic claims; no competitor mentions; no shipping/price promises; no guarantees/warranties/certifications unless explicitly provided in inputs; avoid #1/best/100% claims.
 Titles can't more than 100 characters.
 No emoji and no html.
@@ -102,10 +102,22 @@ void JsonReplyTitles::record_fieldId_values(
                                 "item_name"
                                 , "item_name#1.value"
                             };
+                            if (countryCode == "BE" && langCode == "FR")
+                            {
+                                int TEMP=10;++TEMP;
+                            }
                             for (const auto &fieldId : titleFieldId)
                             {
-                                auto title = jsonReplyOfOneCountryLang["title"].toString();
-                                if (isParent)
+                                QString title;
+                                if ((*m_sku_countryCode_langCode_fieldId_value)[skuParent][countryCode][langCode].contains(fieldId))
+                                {
+                                    title = (*m_sku_countryCode_langCode_fieldId_value)[skuParent][countryCode][langCode][fieldId].toString();
+                                }
+                                else
+                                {
+                                    title = jsonReplyOfOneCountryLang["title"].toString();
+                                }
+                                if (!isParent)
                                 {
                                     title += " " + sku_countryCode_langCode_varTitleInfos[sku][countryCode][langCode];
                                 }
@@ -113,8 +125,10 @@ void JsonReplyTitles::record_fieldId_values(
                                 {
                                     countryCode_langCode_fieldId_value[countryCode][langCode][fieldId]
                                             = title;
-                                    Q_ASSERT(!(*m_sku_countryCode_langCode_fieldId_value)[sku][countryCode][langCode][fieldId].toString().isEmpty());
+                                    Q_ASSERT(!(*m_sku_countryCode_langCode_fieldId_value)[sku][countryCode][langCode][fieldId].toString().trimmed().isEmpty());
+
                                 }
+                                Q_ASSERT(!(*m_sku_countryCode_langCode_fieldId_value)[sku][countryCode][langCode][fieldId].toString().trimmed().isEmpty());
                             }
                         }
                     }

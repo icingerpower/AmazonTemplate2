@@ -476,7 +476,10 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_EXTRA_MANDATORY{
     , "weave_type", "weave_type#1.value"
     , "care_instructions", "care_instructions#1.value"
     , "relationship_type", "child_parent_sku_relationship#1.child_relationship_type"
-    , "outer_material_type", "outer#1.value"
+    , "outer_material_type", "outer#1.material#1.value"
+    , "variation_theme", "variation_theme#1.name"
+    , "style", "style#1.value"
+    , "main_image_url", "main_product_image_locator#1.media_location"
 };
 
 const QSet<QString> TemplateMergerFiller::FIELD_IDS_PATTERN_REMOVE_AS_MANDATORY{
@@ -485,9 +488,9 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_PATTERN_REMOVE_AS_MANDATORY{
     , "battery_type"
     , "battery_weight"
     , "ghs_classification"
-    , "image"
     , "united_nations_regulatory"
-    , "url"
+    , "url_"
+    , "sheet_url"
     , "material_regulation"
     , "battery_cell"
     , "dsa_"
@@ -514,6 +517,7 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_ALWAY_SAME_VALUE{
     , "package_height_unit_of_measure", "item_package_dimensions#1.height.unit"
     , "package_width_unit_of_measure", "item_package_dimensions#1.width.unit"
     , "package_length_unit_of_measure", "item_package_dimensions#1.length.unit"
+    , "special_size_type" , "special_size_type#1.value"
 };
 
 const QHash<QString, TemplateMergerFiller::FuncFiller>
@@ -700,7 +704,7 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "amzn1.volt.ca.product_id_value"
     , "external_product_type"
     , "amzn1.volt.ca.product_id_type"
-    , "outer_material_type", "outer#1.value"
+    , "outer_material_type", "outer#1.material#1.value"
     , "relationship_type", "child_parent_sku_relationship#1.child_relationship_type"
     , "manufacturer", "manufacturer#1.value"
     , "fabric_type"
@@ -714,7 +718,136 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "model_name", "model_name#1.value"
     , "model", "model"
     , "part_number", "part_number#1.value"
+    , "style", "style#1.value"
+    , "care_instructions", "care_instructions#1.value"
 };
+
+const QHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTERN_POSSIBLE_VALUES
+{
+    {"country_of_origin",
+        {
+                    "Chine",   // FR - French
+                    "Cina",    // IT - Italian
+                    "China",   // ES - Spanish
+                    "China",   // EN - English (UK/US/IE/etc.)
+                    "china",   // NL - Dutch
+                    "Kina",    // SE - Swedish
+                    "Chiny",   // PL - Polish
+                    "Çin",     // TR - Turkish
+                    "China",   // DE - German
+                    "中国"      // JP - Japanese
+        }
+    }
+     ,{"variation_theme",
+        {
+                    "SizeColor"
+                    , "Size"
+                    , "TAILLE/COULEUR"
+                    , "MAAT/KLEUR"
+                    , "SIZE/COLOR"
+        }
+    }
+};
+
+const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
+= []() -> QHash<QString, QString>{
+    QHash<QString, QString> _mappingFieldIdTemp{
+        {"feed_product_type", "product_type#1.value"}
+        , {"item_sku", "contribution_sku#1.value"}
+        , {"item_sku", "contribution_sku#1.value"}
+        , {"brand_name", "brand#1.value"}
+        , {"manufacturer", "manufacturer#1.value"}
+        , {"parent_child", "parentage_level#1.value"}
+        , {"parent_sku", "child_parent_sku_relationship#1.parent_sku"}
+        , {"package_length", "item_package_dimensions#1.length.value"}
+        , {"package_width", "item_package_dimensions#1.width.value"}
+        , {"package_height", "item_package_dimensions#1.height.value"}
+        , {"package_weight", "item_package_weight#1.value"}
+        , {"standard_price", "purchasable_offer#1.our_price#1.schedule#1.value_with_tax"}
+        , {"list_price_with_tax", "list_price#1.value_with_tax"}
+        , {"generic_keywords", "generic_keyword#1.value"}
+        , {"external_product_id", "amzn1.volt.ca.product_id_value"}
+        , {"external_product_id_type", "amzn1.volt.ca.product_id_type"}
+        , {"apparel_size", "apparel_size#1.size"}
+        , {"apparel_size_to", "apparel_size#1.size_to"}
+        , {"apparel_size_class", "apparel_size#1.size_class"}
+        , {"apparel_size_system", "apparel_size#1.size_system"}
+        , {"apparel_body_type", "apparel_size#1.body_type"}
+        , {"apparel_height_type", "apparel_size#1.height_type"}
+        , {"footwear_size", "footwear_size#1.size"}
+        , {"footwear_to_size", "footwear_size#1.to_size"}
+        , {"footwear_size_class", "footwear_size#1.size_class"}
+        , {"footwear_size_system", "footwear_size#1.size_system"}
+        , {"shapewear_size", "shapewear_size#1.size"}
+        , {"shapewear_size_to", "shapewear_size#1.size_to"}
+        , {"shapewear_size_class", "shapewear_size#1.size_class"}
+        , {"shapewear_size_system", "shapewear_size#1.size_system"}
+        , {"shapewear_body_type", "shapewear_size#1.body_type"}
+        , {"shapewear_height_type", "shapewear_size#1.height_type"}
+        , {"relationship_type", "child_parent_sku_relationship#1.child_relationship_type"}
+        , {"variation_theme", "variation_theme#1.name"}
+        , {"package_weight", "item_package_weight#1.value"}
+        , {"package_length", "item_package_dimensions#1.length.value"}
+        , {"package_width", "item_package_dimensions#1.width.value"}
+        , {"package_height", "item_package_dimensions#1.height.value"}
+        , {"package_weight_unit_of_measure", "item_package_weight#1.unit"}
+        , {"package_height_unit_of_measure", "item_package_dimensions#1.height.unit"}
+        , {"package_width_unit_of_measure", "item_package_dimensions#1.width.unit"}
+        , {"package_length_unit_of_measure", "item_package_dimensions#1.length.unit"}
+        , {"target_gender", "target_gender#1.value"}
+        , {"age_range_description", "age_range_description#1.value"}
+        , {"color_name", "color#1.value"}
+        , {"color_map", "color_map"}
+        , {"size_map", "size_map"}
+        , {"size_name", "size_name"}
+        , {"update_delete", "::record_action"}
+        , {"recommended_browse_nodes", "recommended_browse_nodes#1.value"}
+        , {"style_name", "style#1.value"}
+        , {"condition_type", "condition_type#1.value"}
+        , {"batteries_required", "batteries_required#1.value"}
+        , {"are_batteries_included", "batteries_included#1.value"}
+        , {"care_instructions", "care_instructions#1.value"}
+        , {"supplier_declared_dg_hz_regulation1", "supplier_declared_dg_hz_regulation#1.value"}
+        , {"supplier_declared_dg_hz_regulation5", "supplier_declared_dg_hz_regulation#5.value"}
+        , {"supplier_declared_material_regulation1", "supplier_declared_material_regulation#1.value"}
+        , {"item_name", "item_name#1.value"}
+        , {"product_description", "product_description#1.value"}
+        , {"bullet_point1", "bullet_point#1.value"}
+        , {"bullet_point2", "bullet_point#2.value"}
+        , {"bullet_point3", "bullet_point#3.value"}
+        , {"bullet_point4", "bullet_point#4.value"}
+        , {"bullet_point5", "bullet_point#5.value"}
+        , {"fit_type", "fit_type#1.value"}
+        , {"collar_style", "collar_style#1.value"}
+        , {"lifecycle_supply_type", "lifecycle_supply_type"}
+        , {"item_length_description", "item_length_description#1.value"}
+        , {"lifestyle", "lifestyle#1.value"}
+        , {"list_price", "list_price#1.value_with_tax"}
+        , {"fabric_type", "fabric_type#1.value"}
+        , {"department_name", "department#1.value"}
+        , {"currency", "currency"}
+        , {"fulfillment_center_id", "fulfillment_availability#1.fulfillment_channel_code"}
+        , {"weave_type", "weave_type#1.value"}
+        , {"outer_material_type", "outer#1.material#1.value"}
+        , {"country_of_origin", "country_of_origin#1.value"}
+        //, {"item_type", "item_type#1.value"}
+        , {"item_type_name", "item_type_name#1.value"}
+        , {"special_size_type", "special_size_type#1.value"}
+        , {"item_type", "item_type"}
+        , {"pattern_name", "pattern_name"}
+        , {"model_name", "model_name#1.value"}
+        , {"model", "model"}
+        , {"part_number", "part_number#1.value"}
+        , {"main_image_url", "main_product_image_locator#1.media_location"}
+    };
+    QHash<QString, QString> _mappingFieldId = _mappingFieldIdTemp;
+    for (auto it = _mappingFieldIdTemp.begin();
+         it != _mappingFieldIdTemp.end(); ++it)
+    {
+        _mappingFieldId[it.value()] = it.key();
+    }
+    return _mappingFieldId;
+}();
 
 const QHash<QString, QStringList> TemplateMergerFiller::FIELD_IDS_COPY_FROM_OTHER
 {
@@ -725,109 +858,11 @@ const QHash<QString, QStringList> TemplateMergerFiller::FIELD_IDS_COPY_FROM_OTHE
 void TemplateMergerFiller::_recordValueAllVersion(
     QHash<QString, QVariant> &fieldId_value, const QString fieldId, const QVariant &value)
 {
-    static QHash<QString, QString> mappingFieldId
-        = []() -> QHash<QString, QString>{
-        QHash<QString, QString> _mappingFieldIdTemp{
-                                                {"feed_product_type", "product_type#1.value"}
-                                                , {"item_sku", "contribution_sku#1.value"}
-                                                , {"item_sku", "contribution_sku#1.value"}
-                                                , {"brand_name", "brand#1.value"}
-                                                , {"manufacturer", "manufacturer#1.value"}
-                                                , {"parent_child", "parentage_level#1.value"}
-                                                , {"parent_sku", "child_parent_sku_relationship#1.parent_sku"}
-                                                , {"package_length", "item_package_dimensions#1.length.value"}
-                                                , {"package_width", "item_package_dimensions#1.width.value"}
-                                                , {"package_height", "item_package_dimensions#1.height.value"}
-                                                , {"package_weight", "item_package_weight#1.value"}
-                                                , {"standard_price", "purchasable_offer#1.our_price#1.schedule#1.value_with_tax"}
-                                                , {"list_price_with_tax", "list_price#1.value_with_tax"}
-                                                , {"generic_keywords", "generic_keyword#1.value"}
-                                                , {"external_product_id", "amzn1.volt.ca.product_id_value"}
-                                                , {"external_product_id_type", "amzn1.volt.ca.product_id_type"}
-                                                , {"apparel_size", "apparel_size#1.size"}
-                                                , {"apparel_size_to", "apparel_size#1.size_to"}
-                                                , {"apparel_size_class", "apparel_size#1.size_class"}
-                                                , {"apparel_size_system", "apparel_size#1.size_system"}
-                                                , {"apparel_body_type", "apparel_size#1.body_type"}
-                                                , {"apparel_height_type", "apparel_size#1.height_type"}
-                                                , {"footwear_size", "footwear_size#1.size"}
-                                                , {"footwear_to_size", "footwear_size#1.to_size"}
-                                                , {"footwear_size_class", "footwear_size#1.size_class"}
-                                                , {"footwear_size_system", "footwear_size#1.size_system"}
-                                                , {"shapewear_size", "shapewear_size#1.size"}
-                                                , {"shapewear_size_to", "shapewear_size#1.size_to"}
-                                                , {"shapewear_size_class", "shapewear_size#1.size_class"}
-                                                , {"shapewear_size_system", "shapewear_size#1.size_system"}
-                                                , {"shapewear_body_type", "shapewear_size#1.body_type"}
-                                                , {"shapewear_height_type", "shapewear_size#1.height_type"}
-                                                , {"relationship_type", "child_parent_sku_relationship#1.child_relationship_type"}
-                                                , {"variation_theme", "variation_theme#1.name"}
-                                                , {"package_weight", "item_package_weight#1.value"}
-                                                , {"package_length", "item_package_dimensions#1.length.value"}
-                                                , {"package_width", "item_package_dimensions#1.width.value"}
-                                                , {"package_height", "item_package_dimensions#1.height.value"}
-                                                , {"package_weight_unit_of_measure", "item_package_weight#1.unit"}
-                                                , {"package_height_unit_of_measure", "item_package_dimensions#1.height.unit"}
-                                                , {"package_width_unit_of_measure", "item_package_dimensions#1.width.unit"}
-                                                , {"package_length_unit_of_measure", "item_package_dimensions#1.length.unit"}
-                                                , {"target_gender", "target_gender#1.value"}
-                                                , {"age_range_description", "age_range_description#1.value"}
-                                                , {"color_name", "color#1.value"}
-                                                , {"color_map", "color_map"}
-                                                , {"size_map", "size_map"}
-                                                , {"size_name", "size_name"}
-                                                , {"update_delete", "::record_action"}
-                                                , {"recommended_browse_nodes", "recommended_browse_nodes#1.value"}
-                                                , {"style_name", "style#1.value"}
-                                                , {"condition_type", "condition_type#1.value"}
-                                                , {"batteries_required", "batteries_required#1.value"}
-                                                , {"care_instructions", "care_instructions#1.value"}
-                                                , {"supplier_declared_dg_hz_regulation1", "supplier_declared_dg_hz_regulation#1.value"}
-                                                , {"supplier_declared_dg_hz_regulation5", "supplier_declared_dg_hz_regulation#5.value"}
-                                                , {"supplier_declared_material_regulation1", "supplier_declared_material_regulation#1.value"}
-                                                , {"item_name", "item_name#1.value"}
-                                                , {"product_description", "product_description#1.value"}
-                                                , {"bullet_point1", "bullet_point#1.value"}
-                                                , {"bullet_point2", "bullet_point#2.value"}
-                                                , {"bullet_point3", "bullet_point#3.value"}
-                                                , {"bullet_point4", "bullet_point#4.value"}
-                                                , {"bullet_point5", "bullet_point#5.value"}
-                                                , {"fit_type", "fit_type#1.value"}
-                                                , {"collar_style", "collar_style#1.value"}
-                                                , {"lifecycle_supply_type", "lifecycle_supply_type"}
-                                                , {"item_length_description", "item_length_description#1.value"}
-                                                , {"lifestyle", "lifestyle#1.value"}
-                                                , {"list_price", "list_price#1.value_with_tax"}
-                                                , {"fabric_type", "fabric_type#1.value"}
-                                                , {"department_name", "department#1.value"}
-                                                , {"currency", "currency"}
-                                                , {"fulfillment_center_id", "fulfillment_availability#1.fulfillment_channel_code"}
-                                                , {"weave_type", "weave_type#1.value"}
-                                                , {"outer_material_type", "outer#1.value"}
-                                                , {"country_of_origin", "country_of_origin#1.value"}
-                                                //, {"item_type", "item_type#1.value"}
-                                                , {"item_type_name", "item_type_name#1.value"}
-                                                , {"special_size_type", "special_size_type#1.value"}
-                                                , {"item_type", "item_type"}
-                                                , {"pattern_name", "pattern_name"}
-                                                , {"model_name", "model_name#1.value"}
-                                                , {"model", "model"}
-                                                , {"part_number", "part_number#1.value"}
-                                                , {"main_image_url", "main_product_image_locator#1.media_location"}
-        };
-        QHash<QString, QString> _mappingFieldId = _mappingFieldIdTemp;
-        for (auto it = _mappingFieldIdTemp.begin();
-             it != _mappingFieldIdTemp.end(); ++it)
-        {
-            _mappingFieldId[it.value()] = it.key();
-        }
-        return _mappingFieldId;
-    }();
     Q_ASSERT(fieldId != "external_product_type");
     Q_ASSERT(!fieldId.isEmpty());
     fieldId_value[fieldId] = value;
-    Q_ASSERT(!mappingFieldId[fieldId].isEmpty());
-    fieldId_value[mappingFieldId[fieldId]] = value;
+    Q_ASSERT(!MAPPING_FIELD_ID[fieldId].isEmpty());
+    fieldId_value[MAPPING_FIELD_ID[fieldId]] = value;
 }
 
 QString TemplateMergerFiller::_getCustomInstructions(const QString &sku) const
@@ -886,7 +921,63 @@ void TemplateMergerFiller::_preFillChildOny()
     }
 }
 
+void TemplateMergerFiller::_preFillTitles()
+{
+    QHash<QString, QHash<QString, QString>> skuParent_langCode_title;
+    for (auto itSku = m_sku_countryCode_langCode_fieldId_value.begin();
+         itSku != m_sku_countryCode_langCode_fieldId_value.end(); ++itSku)
+    {
+        const auto &sku = itSku.key();
+        bool isParent = _isSkuParent(sku);
+        if (isParent)
+        {
+            for (auto itCountryCode = itSku.value().begin();
+                 itCountryCode != itSku.value().end(); ++itCountryCode)
+            {
+                const auto &countryCode = itCountryCode.key();
+                for (auto itLangCode = itCountryCode.value().begin();
+                     itLangCode != itCountryCode.value().end(); ++itLangCode)
+                {
+                    const auto &langCode = itLangCode.key();
+                    auto itFieldId = itLangCode.value().constFind("item_name");
+                    if (itFieldId != itLangCode.value().end())
+                    {
+                        const auto &title = itFieldId.value().toString();
+                        skuParent_langCode_title[sku][langCode] = title;
+                    }
+                }
+            }
+        }
+    }
+    for (auto itSku = m_sku_countryCode_langCode_fieldId_value.begin();
+         itSku != m_sku_countryCode_langCode_fieldId_value.end(); ++itSku)
+    {
+        const auto &sku = itSku.key();
+        bool isParent = _isSkuParent(sku);
+        if (isParent)
+        {
+            for (auto itCountryCode = itSku.value().begin();
+                 itCountryCode != itSku.value().end(); ++itCountryCode)
+            {
+                const auto &countryCode = itCountryCode.key();
+                for (auto itLangCode = itCountryCode.value().begin();
+                     itLangCode != itCountryCode.value().end(); ++itLangCode)
+                {
+                    const auto &langCode = itLangCode.key();
+                    auto itFieldId = itLangCode.value().constFind("item_name");
+                    if (itFieldId == itLangCode.value().cend()
+                            && skuParent_langCode_title.contains(sku)
+                            && skuParent_langCode_title[sku].contains(langCode))
+                    {
+                        const auto &title = skuParent_langCode_title[sku][langCode];
+                        _recordValueAllVersion(itLangCode.value(), "item_name", title);
+                    }
+                }
+            }
+        }
+    }
 
+}
 
 const QSet<QString> TemplateMergerFiller::VALUES_MANDATORY
     = []() -> QSet<QString>
@@ -1074,7 +1165,11 @@ void TemplateMergerFiller::fillExcelFiles(
                                           for (auto itLangCode = itCountryCode.value().begin();
                                                itLangCode != itCountryCode.value().end(); ++itLangCode)
                                           {
+                                              //Q_ASSERT(itLangCode.value().contains("main_image_url")
+                                                       //|| itLangCode.value().contains("main_product_image_locator#1.media_location"));
                                               itLangCode.value().subtract(notMandatoryFieldIds);
+                                              //Q_ASSERT(itLangCode.value().contains("main_image_url")
+                                                       //|| itLangCode.value().contains("main_product_image_locator#1.media_location"));
                                           }
                                       }
                                       delete mandatoryFieldIds;
@@ -1472,6 +1567,7 @@ void TemplateMergerFiller::_setFilePathsToFill(const QString &keywordFilePath,
         _readFields(document, countryCodeTo, langCodeTo);
         _readMandatory(document, countryCodeTo, langCodeTo);
         _preFillChildOny();
+        _preFillTitles();
         _readValidValues(document, countryCodeTo, langCodeTo, countryCodeFrom, langCodeFrom);
     }
 }
@@ -1529,6 +1625,8 @@ void TemplateMergerFiller::_readInfoSources(const QStringList &sourceFilePaths)
                         if (!FIELD_IDS_FILLER_NO_SOURCES.contains(fieldId)
                             && !FIELD_IDS_NO_SOURCES.contains(fieldId)
                             && !FIELD_IDS_PUT_FIRST_VALUE.contains(fieldId)
+                            && m_countryCode_langCode_fieldIdMandatory.contains(countryCode)
+                            && m_countryCode_langCode_fieldIdMandatory[countryCode].contains(langCode)
                             && m_countryCode_langCode_fieldIdMandatory[countryCode][langCode].contains(fieldId))
                         {
                             if (!_isSkuParent(sku) || !m_countryCode_langCode_fieldIdChildOnly[countryCode][langCode].contains(fieldId))
@@ -1688,9 +1786,15 @@ void TemplateMergerFiller::_fillDataAutomatically()
                           && m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeTo][langCodeTo].contains(fieldId)))
                     {
                         QVariant origValue;
+                        Q_ASSERT(MAPPING_FIELD_ID.contains(fieldId));
+                        const auto &mappedFieldId = MAPPING_FIELD_ID[fieldId];
                         if (m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom].contains(fieldId))
                         {
                             origValue = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][fieldId];
+                        }
+                        else if (m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom].contains(mappedFieldId))
+                        {
+                            origValue = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][mappedFieldId];
                         }
                         else if (FIELD_IDS_SIZE.contains(fieldId)) //If it is a  size, we get the orig size value
                         {
@@ -1817,14 +1921,12 @@ void TemplateMergerFiller::initGptFiller()
     const auto &langCodes  = getLangCodesTo();
     const auto &countryCodeFrom = _getCountryCode(m_filePathFrom);
     const auto &langCodeFrom = _getLangCode(m_filePathFrom);
-    const auto &sku_countryCode_langCode_varTitleInfos = _get_sku_countryCode_langCode_varTitleInfos();
     m_gptFiller->init(
                 countryCodeFrom
                 , langCodeFrom
                 , m_productType
                 , FIELD_IDS_NOT_AI
                 , m_sku_skuInfos
-                , sku_countryCode_langCode_varTitleInfos
                 , m_sku_countryCode_langCode_fieldId_origValue
                 , m_countryCode_langCode_fieldId_possibleValues
                 , m_countryCode_langCode_fieldIdMandatory
@@ -2166,6 +2268,7 @@ void TemplateMergerFiller::_readMandatory(
                         }
                         if (cellHintSecond)
                         {
+                            hint += " Exemple: ";
                             hint += cellHintSecond->value().toString();
                         }
                         if (!hint.isEmpty())
@@ -2256,38 +2359,35 @@ void TemplateMergerFiller::_readValidValues(
                     }
                 }
             }
-            else if (fieldId.contains("country_of_origin"))
+            else
             {
-                static QSet<QString> china{
-                    "Chine",   // FR - French
-                    "Cina",    // IT - Italian
-                    "China",   // ES - Spanish
-                    "China",   // EN - English (UK/US/IE/etc.)
-                    "china",   // NL - Dutch
-                    "Kina",    // SE - Swedish
-                    "Chiny",   // PL - Polish
-                    "Çin",     // TR - Turkish
-                    "China",   // DE - German
-                    "中国"      // JP - Japanese
-                };
-                for (auto itSku = m_sku_countryCode_langCode_fieldId_origValue.begin();
-                     itSku != m_sku_countryCode_langCode_fieldId_origValue.end(); ++itSku)
+                for (auto it = AUTO_SELECT_PATTERN_POSSIBLE_VALUES.begin();
+                     it != AUTO_SELECT_PATTERN_POSSIBLE_VALUES.end(); ++it)
                 {
-                    const auto &sku = itSku.key();
-                    bool isParent = _isSkuParent(sku);
-                    if (!isParent || !m_countryCode_langCode_fieldIdChildOnly[countryCodeTo][langCodeTo].contains(fieldId))
+                    const auto &patternFieldId = it.key();
+                    if (fieldId.contains(patternFieldId))
                     {
-                        if (m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom].contains(fieldId))
+                        const auto &valuesEquivalent = it.value();
+                        for (auto itSku = m_sku_countryCode_langCode_fieldId_origValue.begin();
+                             itSku != m_sku_countryCode_langCode_fieldId_origValue.end(); ++itSku)
                         {
-                            const QString &fromCountry = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][fieldId].toString();
-                            if (china.contains(fromCountry))
+                            const auto &sku = itSku.key();
+                            bool isParent = _isSkuParent(sku);
+                            if (!isParent || !m_countryCode_langCode_fieldIdChildOnly[countryCodeTo][langCodeTo].contains(fieldId))
                             {
-                                for (const auto &possibleValue : possibleValues)
+                                if (m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom].contains(fieldId))
                                 {
-                                    if (china.contains(possibleValue))
+                                    const QString &fromValue = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][fieldId].toString();
+                                    if (valuesEquivalent.contains(fromValue))
                                     {
-                                        m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId] = possibleValue;
-                                        break;
+                                        for (const auto &possibleValue : possibleValues)
+                                        {
+                                            if (valuesEquivalent.contains(possibleValue))
+                                            {
+                                                m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId] = possibleValue;
+                                                break;
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -2488,66 +2588,6 @@ QHash<QString, int> TemplateMergerFiller::_get_fieldId_index(
         }
     }
     return colId_index;
-}
-
-QHash<QString, QHash<QString, QHash<QString, QString>>> TemplateMergerFiller::_get_sku_countryCode_langCode_varTitleInfos() const
-{
-    QHash<QString, QHash<QString, QHash<QString, QString>>> sku_countryCode_langCode_varTitleInfos;
-    for (auto itSku = m_sku_countryCode_langCode_fieldId_value.begin();
-         itSku != m_sku_countryCode_langCode_fieldId_value.end(); ++itSku)
-    {
-        const auto &sku = itSku.key();
-        const auto &infos = m_sku_skuInfos[sku];
-        for (auto itCountryCode = itSku.value().begin();
-             itCountryCode != itSku.value().end(); ++itCountryCode)
-        {
-            const auto &countryCode = itCountryCode.key();
-            for (auto itLangCode = itCountryCode.value().begin();
-                 itLangCode != itCountryCode.value().end(); ++itLangCode)
-            {
-                const auto &langCode = itLangCode.key();
-                if (!sku_countryCode_langCode_varTitleInfos[sku].contains(langCode))
-                {
-                    QStringList varElements;
-                    const auto &fieldId_value = itLangCode.value();
-                    if (!infos.colorOrig.isEmpty())
-                    {
-                        for (const auto &fieldIdColor : FIELD_IDS_COLOR_NAME)
-                        {
-                            if (fieldId_value.contains(fieldIdColor))
-                            {
-                                varElements << fieldId_value[fieldIdColor].toString();
-                                break;
-                            }
-                        }
-                    }
-                    if (!infos.sizeOrig.isEmpty())
-                    {
-                        QString sizeTitle;
-                        if (infos.sizeTitleOrig.contains("="))
-                        {
-                            const auto &elementsSize = infos.sizeTitleOrig.split("=");
-                            sizeTitle = elementsSize[0] + "=";
-                        }
-                        for (const auto &fieldIdSize : FIELD_IDS_SIZE)
-                        {
-                            if (fieldId_value.contains(fieldIdSize))
-                            {
-                                sizeTitle += fieldId_value[fieldIdSize].toString();
-                                varElements << sizeTitle;
-                                break;
-                            }
-                        }
-                    }
-                    if (varElements.size() > 0)
-                    {
-                        sku_countryCode_langCode_varTitleInfos[sku][countryCode][langCode] = "(" + varElements.join(", ") + ")";
-                    }
-                }
-            }
-        }
-    }
-    return sku_countryCode_langCode_varTitleInfos;
 }
 
 void TemplateMergerFiller::_formatFieldId(QString &fieldId) const

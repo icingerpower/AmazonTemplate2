@@ -33,7 +33,6 @@ public:
               , const QString &productType
               , const QSet<QString> &fieldIdsToIgnore
               , const QHash<QString, SkuInfo> &sku_infos
-              , const QHash<QString, QHash<QString, QHash<QString, QString>>> &sku_countryCode_langCode_varTitleInfos
               , const QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_origValue
               , const QHash<QString, QHash<QString, QHash<QString, QStringList>>> &countryCode_langCode_fieldId_possibleValues
               , const QHash<QString, QHash<QString, QSet<QString>>> &countryCode_langCode_fieldIdMandatory
@@ -107,9 +106,8 @@ private:
     QSet<QString> _getAllFieldIds() const;
     bool _containsBullets(const QHash<QString, QVariant> &fieldId_value) const;
     bool _containsDescription(const QHash<QString, QVariant> &fieldId_value) const;
-    bool _containsTitle(const QHash<QString, QVariant> &fieldId_value) const;
-    void _askFillingSelects(
-            const QHash<QString, QHash<QString, QHash<QString, JsonSourceInfos>>> &skuParent_color_fieldId_jsonSourceSelect
+    bool _containsTitle(const QString &skuParent, const QString &countryCode, const QString &langCode) const;
+    void _askFillingSelects(const QHash<QString, QHash<QString, QHash<QString, QHash<QString, QHash<QString, JsonSourceInfos> > > > > &skuParent_color_countryCode_langCode_fieldId_jsonSourceSelect
             , std::function<void()> callbackFinishedSuccess
             , std::function<void(const QString &)> callbackFinishedFailure);
     void _askFillingTexts(
@@ -128,6 +126,7 @@ private:
             const QHash<QString, JsonSourceInfos> &skuParent_jsonSourceDescBullets
             , std::function<void()> callbackFinishedSuccess
             , std::function<void(const QString &)> callbackFinishedFailure);
+    QHash<QString, QHash<QString, QHash<QString, QString> > > _get_sku_countryCode_langCode_varTitleInfos() const;
     int m_nQueries;
     std::atomic_int m_nDone;
     std::function<void (int, int)> m_callBackProgress;

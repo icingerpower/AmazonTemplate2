@@ -51,9 +51,16 @@ bool JsonReplyText::isJsonReplyCorrect(
             const auto &subReply = jsonReply[countryCode].toObject();
             const auto &subSubReply = subReply[langCode].toObject();
             const auto &value = subSubReply["value"].toString();
-            if (fieldId.contains("color") || fieldId.contains("color")  || fieldId.contains("type"))
+            if (fieldId.contains("color") || fieldId.contains("type"))
             {
                 if (value.size() > 30)
+                {
+                    return false;
+                }
+            }
+            if (fieldId.contains("style"))
+            {
+                if (value.size() > 100)
                 {
                     return false;
                 }

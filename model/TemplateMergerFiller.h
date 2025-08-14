@@ -26,6 +26,8 @@ public:
     static const QStringList FIELD_IDS_COLOR_NAME;
     static const QStringList FIELD_IDS_SIZE;
     static const QSet<QString> FIELD_IDS_CHILD_ONLY;
+    static const QHash<QString, QSet<QString>> AUTO_SELECT_PATTERN_POSSIBLE_VALUES;
+    static const QHash<QString, QString> MAPPING_FIELD_ID;
     enum Version{
         V01
         , V02
@@ -136,9 +138,9 @@ private:
     void _readMandatory(QXlsx::Document &document, const QString &countryCode, const QString &langCode);
     void _readValidValues(QXlsx::Document &document, const QString &countryCode, const QString &langCode, const QString &countryCodeFrom, const QString &langCodeFrom);
     void _preFillChildOny();
+    void _preFillTitles();
     bool _isSkuParent(const QString &sku) const;
     QHash<QString, int> _get_fieldId_index(QXlsx::Document &doc) const;
-    QHash<QString, QHash<QString, QHash<QString, QString> > > _get_sku_countryCode_langCode_varTitleInfos() const;
     void _formatFieldId(QString &fieldId) const;
     int _getIndColSku(const QHash<QString, int> &fieldId_index) const;
     int _getIndColSkuParent(const QHash<QString, int> &fieldId_index) const;
