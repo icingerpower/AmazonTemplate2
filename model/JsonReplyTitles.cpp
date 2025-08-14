@@ -102,10 +102,6 @@ void JsonReplyTitles::record_fieldId_values(
                                 "item_name"
                                 , "item_name#1.value"
                             };
-                            if (countryCode == "BE" && langCode == "FR")
-                            {
-                                int TEMP=10;++TEMP;
-                            }
                             for (const auto &fieldId : titleFieldId)
                             {
                                 QString title;

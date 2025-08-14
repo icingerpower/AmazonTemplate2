@@ -1093,10 +1093,6 @@ QHash<QString, QHash<QString, QHash<QString, QString> > > GptFiller::_get_sku_co
                     const auto &langCode = itLangCode.key();
                     if (!sku_countryCode_langCode_varTitleInfos[sku][countryCode].contains(langCode))
                     {
-                            if (countryCode == "BE" && langCode == "FR")
-                            {
-                                int TEMP=10;++TEMP;
-                            }
                         QStringList varElements;
                         const auto &fieldId_value = itLangCode.value();
                         if (!infos.colorOrig.isEmpty())
