@@ -5,9 +5,8 @@ const QString JsonReplyTransBullets::PROMPT
             R"(I need to create a product page for amazon (FBA) with a page template to fill.
 You will need to translate the given bullet point in the local language, adding SEO keywords (no stuffing to keep the bullet points natural).
 Compliance (strict): no medical/therapeutic claims; no competitor mentions; no shipping/price promises; no guarantees/warranties/certifications unless explicitly provided in inputs; avoid #1/best/100% claims.
-Each bullet < 250 characters (including spaces).
 One emoji at the start of each bullet and no html in bullet points.
-For translation to english, add both metric and imperial units
+For translation to english, add both metric and imperial units without removing words
 For translation from english to another language, remove imperial units
 This is the bullet points (from language %1) to translate
 %2
@@ -115,7 +114,8 @@ void JsonReplyTransBullets::record_fieldId_values(
         const auto &sku = itSku.key();
         bool isParent = m_skuParent_skus.contains(sku);
         const auto &curSkuParent = isParent ? sku : (*m_sku_infos)[sku].skuParent;
-        if (curSkuParent == skuParent)
+        const auto &curColorOrig = isParent ? QString{} : (*m_sku_infos)[sku].colorOrig;
+        if (curSkuParent == skuParent && (colorOrig == curColorOrig || colorOrig.isEmpty()))
         {
             auto &countryCode_langCode_fieldId_value = itSku.value();
             for (auto itCountryCode = m_countryCode_langCode_fieldIdChildOnly->begin();
@@ -133,9 +133,11 @@ void JsonReplyTransBullets::record_fieldId_values(
                             const auto &fieldIdsChildOnly = itLangCode.value();
                             if (!isParent || !fieldIdsChildOnly.contains(fieldId))
                             {
-                                const auto &value = jsonReplyOfOneCountryLang["value"];
                                 if (!countryCode_langCode_fieldId_value[countryCode][langCode].contains(fieldId))
                                 {
+                                    const auto &object = jsonReplyOfOneCountryLang[fieldId].toObject();
+                                    const auto &value = object["value"].toString();
+                                    Q_ASSERT(!value.isEmpty());
                                     countryCode_langCode_fieldId_value[countryCode][langCode][fieldId]
                                             = value;
                                     Q_ASSERT(fieldIdsMapping.contains(fieldId));

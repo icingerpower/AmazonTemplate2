@@ -17,6 +17,7 @@ public:
             , QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> *sku_countryCode_langCode_fieldId_value);
 
     virtual QString getName() const = 0;
+    // CONCEPTION : possibleValues / maxLength / skuChild
     virtual bool isJsonReplyCorrect(const QString &skuParent // Those parameters are needed to check json
                                     , const QString &color
                                     , const QStringList &countryCodes

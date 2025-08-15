@@ -149,7 +149,7 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_COPY
 TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_CLOTHE_SIZE
     = [](const QString &countryFrom,
          const QString &countryTo,
-         const QString &,
+         const QString &langTo,
          const QHash<QString, QHash<QString, QString>> &,
          Gender targetGender,
          Age age_range_description,
@@ -246,6 +246,17 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_CLOTH
             {
                 return countryCode_size[countryTo];
             }
+        }
+    }
+    if (countryTo == "BE" && langTo == "FR")
+    {
+        if (origValue == "XL")
+        {
+            return "TG";
+        }
+        else if (origValue == "XXL")
+        {
+            return "TTG";
         }
     }
     return origValue;
@@ -408,8 +419,6 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_NOT_AI{
     , "brand#1.value"
     , "manufacturer"
     , "manufacturer#1.value"
-    , "parent_child"
-    , "parentage_level#1.value"
     , "parent_sku"
     , "child_parent_sku_relationship#1.parent_sku"
     , "package_length"
@@ -424,6 +433,11 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_NOT_AI{
     , "model"
     , "model_name#1.value"
     , "model_name"
+    , "parent_child", "parentage_level#1.value"
+    , "apparel_size_to"
+    , "apparel_size#1.size_to"
+    , "apparel_size"
+    , "apparel_size#1.size"
     /*
     , "product_description", "product_description#1.value"
     , "bullet_point1", "bullet_point#1.value"
@@ -435,6 +449,11 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_NOT_AI{
     //, "quantity", "fulfillment_availability#1.quantity"
     //, "list_price_with_tax"
     //, "list_price#1.value_with_tax"
+};
+
+const QSet<QString> TemplateMergerFiller::FIELD_IDS_AI_BUT_REQUIRED_IN_FIRST{
+    "batteries_required" , "batteries_required#1.value"
+    , "supplier_declared_dg_hz_regulation1", "supplier_declared_dg_hz_regulation#1.value"
 };
 
 const QSet<QString> TemplateMergerFiller::FIELD_IDS_PUT_FIRST_VALUE{
@@ -472,15 +491,34 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_EXTRA_MANDATORY{
     , "model_name", "model_name#1.value"
     , "condition_type", "condition_type#1.value"
     , "item_type_name", "item_type_name#1.value"
-    , "special_size_type", "special_size_type#1.value"
     , "weave_type", "weave_type#1.value"
     , "care_instructions", "care_instructions#1.value"
     , "relationship_type", "child_parent_sku_relationship#1.child_relationship_type"
-    , "outer_material_type", "outer#1.material#1.value"
     , "variation_theme", "variation_theme#1.name"
     , "style", "style#1.value"
     , "main_image_url", "main_product_image_locator#1.media_location"
+    , "parent_child", "parentage_level#1.value"
+    , "update_delete", "::record_action"
 };
+
+const QHash<QString, QSet<QString>> TemplateMergerFiller::PRODUCT_TYPE_FIELD_IDS_EXTRA_MANDATORY
+= []() -> QHash<QString, QSet<QString>> {
+    QHash<QString, QSet<QString>> productType_extraFieldIds;
+    QSet<QString> clotheFieldIds{
+        "special_size_type", "special_size_type#1.value"
+        , "outer_material_type", "outer#1.material#1.value"
+        , "item_length_description", "item_length_description#1.value"
+        //, "occasion_type", "occasion_type#1.value"
+    };
+    productType_extraFieldIds["robe"] = clotheFieldIds;
+    productType_extraFieldIds["dress"] = clotheFieldIds;
+    for (auto it = productType_extraFieldIds.begin();
+         it != productType_extraFieldIds.end(); ++it)
+    {
+        productType_extraFieldIds[it.key().toUpper()] = it.value();
+    }
+    return productType_extraFieldIds;
+}();
 
 const QSet<QString> TemplateMergerFiller::FIELD_IDS_PATTERN_REMOVE_AS_MANDATORY{
     "lithium"
@@ -518,14 +556,26 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_ALWAY_SAME_VALUE{
     , "package_width_unit_of_measure", "item_package_dimensions#1.width.unit"
     , "package_length_unit_of_measure", "item_package_dimensions#1.length.unit"
     , "special_size_type" , "special_size_type#1.value"
+    , "outer_material_type", "outer#1.material#1.value"
+    , "batteries_required", "batteries_required#1.value"
+};
+
+const QSet<QString> TemplateMergerFiller::FIELD_IDS_ALWAY_SAME_VALUE_CHILD{
+    "item_length_description", "item_length_description#1.value"
+    , "fit_type", "fit_type#1.value"
+    , "collar_style", "collar_style#1.value"
+    , "weave_type", "weave_type#1.value"
+    , "item_type_name", "item_type_name#1.value"
+    , "special_size_type", "special_size_type#1.value"
+    , "occasion_type", "occasion_type#1.value"
 };
 
 const QHash<QString, TemplateMergerFiller::FuncFiller>
     TemplateMergerFiller::FIELD_IDS_FILLER_NO_SOURCES
 {
-    {"parent_child", FUNC_FILLER_COPY}
-    , {"parentage_level#1.value", FUNC_FILLER_COPY}
-    , {"parent_sku", FUNC_FILLER_COPY}
+    //{"parent_child", FUNC_FILLER_COPY}
+    //, {"parentage_level#1.value", FUNC_FILLER_COPY}
+    {"parent_sku", FUNC_FILLER_COPY}
     , {"child_parent_sku_relationship#1.parent_sku", FUNC_FILLER_COPY}
     //, {"relationship_type", FUNC_FILLER_COPY}
     //, {"child_parent_sku_relationship#1.child_relationship_type", FUNC_FILLER_COPY}
@@ -639,10 +689,8 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "item_package_dimensions#1.height.unit"
     , "package_width_unit_of_measure"
     , "item_package_dimensions#1.width.unit"
-    , "batteries_required"
-    , "batteries_required#1.value"
-    , "supplier_declared_dg_hz_regulation1"
-    , "supplier_declared_dg_hz_regulation#1.value"
+    //, "batteries_required", "batteries_required#1.value"
+    // , "supplier_declared_dg_hz_regulation1", "supplier_declared_dg_hz_regulation#1.value"
     , "condition_type"
     , "condition_type#1.value"
     , "currency"
@@ -680,12 +728,12 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "shapewear_size#1.body_type"
     , "shapewear_height_type"
     , "shapewear_size#1.height_type"
-    , "product_description", "product_description#1.value"
-    , "bullet_point1", "bullet_point#1.value"
-    , "bullet_point2", "bullet_point#2.value"
-    , "bullet_point3", "bullet_point#3.value"
-    , "bullet_point4", "bullet_point#4.value"
-    , "bullet_point5", "bullet_point#5.value"
+    //, "product_description", "product_description#1.value"
+    //, "bullet_point1", "bullet_point#1.value"
+    //, "bullet_point2", "bullet_point#2.value"
+    //, "bullet_point3", "bullet_point#3.value"
+    //, "bullet_point4", "bullet_point#4.value"
+    //, "bullet_point5", "bullet_point#5.value"
     , "color_map"
     , "fit_type", "fit_type#1.value"
     , "collar_style", "collar_style#1.value"
@@ -696,7 +744,7 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "model"
     , "lifecycle_supply_type"
     , "item_length_description", "item_length_description#1.value"
-    , "fabric_type", "fabric_type#1.value"
+    //, "fabric_type", "fabric_type#1.value"
     , "standard_price", "purchasable_offer#1.our_price#1.schedule#1.value_with_tax"
     , "are_batteries_included"
     , "external_product_id"
@@ -707,7 +755,6 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "outer_material_type", "outer#1.material#1.value"
     , "relationship_type", "child_parent_sku_relationship#1.child_relationship_type"
     , "manufacturer", "manufacturer#1.value"
-    , "fabric_type"
     , "parent_sku", "child_parent_sku_relationship#1.parent_sku"
     , "relationship_type", "child_parent_sku_relationship#1.child_relationship_type"
     , "merchant_shipping_group#1.value"
@@ -720,12 +767,16 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "part_number", "part_number#1.value"
     , "style", "style#1.value"
     , "care_instructions", "care_instructions#1.value"
+    , "main_image_url", "main_product_image_locator#1.media_location"
 };
 
-const QHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTERN_POSSIBLE_VALUES
+const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTERN_POSSIBLE_VALUES
+= []() -> QMultiHash<QString, QSet<QString>>
 {
-    {"country_of_origin",
-        {
+    QMultiHash<QString, QSet<QString>> pattern_possibleValues;
+    pattern_possibleValues.insert(
+                "country_of_origin",
+                QSet<QString>{
                     "Chine",   // FR - French
                     "Cina",    // IT - Italian
                     "China",   // ES - Spanish
@@ -736,18 +787,60 @@ const QHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTERN_PO
                     "Çin",     // TR - Turkish
                     "China",   // DE - German
                     "中国"      // JP - Japanese
-        }
-    }
-     ,{"variation_theme",
-        {
+                });
+    pattern_possibleValues.insert(
+                "variation_theme",
+                QSet<QString>{
                     "SizeColor"
                     , "Size"
                     , "TAILLE/COULEUR"
                     , "MAAT/KLEUR"
                     , "SIZE/COLOR"
-        }
+                });
+    QSet<QString> recordValues{
+        "Aanmaken of vervangen (volledige update)"
+        , "Create or Replace (Full Update)"
+        , "Actualisation"
+        , "Créez ou remplacez (mise à jour complète)"
+    };
+    pattern_possibleValues.insert(
+                "update_delete", recordValues);
+    pattern_possibleValues.insert(
+                "::record_action", recordValues);
+    pattern_possibleValues.insert(
+                "parent_child",
+                QSet<QString>{
+                    "Parent"
+                    , "Ouder"
+                });
+    pattern_possibleValues.insert(
+                "parent_child",
+                QSet<QString>{
+                    "Child"
+                    , "Kind"
+                    , "Enfant"
+                });
+    pattern_possibleValues.insert(
+                "supplier_declared_dg_hz_regulation",
+                QSet<QString>{
+                    "Not Applicable"
+                    , "Non applicable"
+                    , "Niet van toepassing"
+                });
+    pattern_possibleValues.insert(
+                "batteries_required",
+                QSet<QString>{
+                    "No"
+                    , "Non"
+                    , "Nee"
+                });
+    const auto &list_ParentChildValues = pattern_possibleValues.values("parent_child");
+    for (const auto &parentChildValues : list_ParentChildValues)
+    {
+        pattern_possibleValues.insert("parentage_level#1.value", parentChildValues);
     }
-};
+    return pattern_possibleValues;
+}();
 
 const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
 = []() -> QHash<QString, QString>{
@@ -839,6 +932,7 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"model", "model"}
         , {"part_number", "part_number#1.value"}
         , {"main_image_url", "main_product_image_locator#1.media_location"}
+        , {"occasion_type", "occasion_type#1.value"}
     };
     QHash<QString, QString> _mappingFieldId = _mappingFieldIdTemp;
     for (auto it = _mappingFieldIdTemp.begin();
@@ -847,6 +941,33 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         _mappingFieldId[it.value()] = it.key();
     }
     return _mappingFieldId;
+}();
+
+const QHash<QString, QHash<QString, QSet<QString>>> TemplateMergerFiller::COUNTRY_LANG_FIELD_ID_TO_REMOVE
+= []() -> QHash<QString, QHash<QString, QSet<QString>>>{
+    QHash<QString, QHash<QString, QSet<QString>>> countryCode_langCode_fieldId;
+    countryCode_langCode_fieldId["BE"]["NL"].insert("apparel_size#1.body_type");
+    for (auto itCountryCode = countryCode_langCode_fieldId.begin();
+         itCountryCode != countryCode_langCode_fieldId.end(); ++itCountryCode)
+    {
+        for (auto itLangCode = itCountryCode.value().begin();
+             itLangCode != itCountryCode.value().end(); ++itLangCode)
+        {
+            auto &fieldIds = itLangCode.value();
+            QSet<QString> fieldIdsToAdd;
+            for (const auto &fieldId : std::as_const(fieldIds))
+            {
+                Q_ASSERT(TemplateMergerFiller::MAPPING_FIELD_ID.contains(fieldId));
+                const auto &mappedFieldId = TemplateMergerFiller::MAPPING_FIELD_ID[fieldId];
+                if (!fieldIds.contains(mappedFieldId))
+                {
+                    fieldIdsToAdd.insert(mappedFieldId);
+                }
+            }
+            fieldIds.unite(fieldIdsToAdd);
+        }
+    }
+    return countryCode_langCode_fieldId;
 }();
 
 const QHash<QString, QStringList> TemplateMergerFiller::FIELD_IDS_COPY_FROM_OTHER
@@ -858,6 +979,7 @@ const QHash<QString, QStringList> TemplateMergerFiller::FIELD_IDS_COPY_FROM_OTHE
 void TemplateMergerFiller::_recordValueAllVersion(
     QHash<QString, QVariant> &fieldId_value, const QString fieldId, const QVariant &value)
 {
+    Q_ASSERT(!value.toString().isEmpty());
     Q_ASSERT(fieldId != "external_product_type");
     Q_ASSERT(!fieldId.isEmpty());
     fieldId_value[fieldId] = value;
@@ -917,7 +1039,8 @@ void TemplateMergerFiller::_preFillChildOny()
     }
     if (countryCode_langCode_parent.size() > 1)
     {
-        qDebug() << "--\nPARENT field ids - The following field id will be filled for the parents:" << fieldIdsAllParents;
+        qDebug() << "--\nPARENT field ids - The following field id will be filled for the parents:"
+                 << fieldIdsAllParents;
     }
 }
 
@@ -1312,7 +1435,7 @@ void TemplateMergerFiller:: _readSkus(QXlsx::Document &document,
         QString sku{cellSku->value().toString()};
         if (sku.startsWith("ABC"))
         {
-            return; //it means it is the exemple of an empty file
+            break; //it means it is the exemple of an empty file
         }
         if (sku.isEmpty())
         {
@@ -1449,7 +1572,10 @@ void TemplateMergerFiller:: _readSkus(QXlsx::Document &document,
         auto valid1 = skus.size();
         auto valid2 = skus.size()-nParents;
         const QSet<qsizetype> validCounts{valid1, valid2};
-        for (const auto &fieldId : FIELD_IDS_NOT_AI)
+        auto neededFieldIds = FIELD_IDS_NOT_AI;
+        neededFieldIds.unite(FIELD_IDS_AI_BUT_REQUIRED_IN_FIRST);
+
+        for (const auto &fieldId : neededFieldIds)
         {
             static QSet<QString> excludeFieldIds{ //Field ids that can be uncomplete as retrieved from source
                 "external_product_id"
@@ -1457,6 +1583,8 @@ void TemplateMergerFiller:: _readSkus(QXlsx::Document &document,
                 , "external_product_type"
                 , "external_product_id_type"
                 , "amzn1.volt.ca.product_id_type"
+                , "apparel_size_to"
+                , "apparel_size#1.size_to"
             };
             if (excludeFieldIds.contains(fieldId))
             {
@@ -1759,7 +1887,6 @@ void TemplateMergerFiller::_checkVarationsNotMissing()
 
 void TemplateMergerFiller::_fillDataAutomatically()
 {
-    //m_sku_countryCode_fieldId_value;
     const auto &countryCodeFrom = _getCountryCode(m_filePathFrom);
     const auto &langCodeFrom = _getLangCode(m_filePathFrom);
     for (const auto &toFillFilePath : m_toFillFilePaths)
@@ -1775,64 +1902,38 @@ void TemplateMergerFiller::_fillDataAutomatically()
             bool isParent = _isSkuParent(sku);
             for (const auto &fieldId : fieldIdsMandatory)
             {
-                if (isParent && m_countryCode_langCode_fieldIdChildOnly[countryCodeTo][langCodeTo].contains(fieldId))
+                if (!isParent || !m_countryCode_langCode_fieldIdChildOnly[countryCodeTo][langCodeTo].contains(fieldId))
                 {
-                    continue;
-                }
-                if (fieldId_index.contains(fieldId))
-                {
-                    if (!(m_sku_countryCode_langCode_fieldId_origValue[sku].contains(countryCodeTo)
-                          && m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeTo].contains(langCodeTo)
-                          && m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeTo][langCodeTo].contains(fieldId)))
+                    if (fieldId_index.contains(fieldId))
                     {
-                        QVariant origValue;
-                        Q_ASSERT(MAPPING_FIELD_ID.contains(fieldId));
-                        const auto &mappedFieldId = MAPPING_FIELD_ID[fieldId];
-                        if (m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom].contains(fieldId))
+                        if (!(m_sku_countryCode_langCode_fieldId_origValue[sku].contains(countryCodeTo)
+                              && m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeTo].contains(langCodeTo)
+                              && m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeTo][langCodeTo].contains(fieldId)))
                         {
-                            origValue = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][fieldId];
-                        }
-                        else if (m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom].contains(mappedFieldId))
-                        {
-                            origValue = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][mappedFieldId];
-                        }
-                        else if (FIELD_IDS_SIZE.contains(fieldId)) //If it is a  size, we get the orig size value
-                        {
-                            for (const auto &sizeFieldId : FIELD_IDS_SIZE)
+                            QVariant origValue;
+                            Q_ASSERT(MAPPING_FIELD_ID.contains(fieldId));
+                            const auto &mappedFieldId = MAPPING_FIELD_ID[fieldId];
+                            if (m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom].contains(fieldId))
                             {
-                                if (m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom].contains(sizeFieldId))
+                                origValue = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][fieldId];
+                            }
+                            else if (m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom].contains(mappedFieldId))
+                            {
+                                origValue = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][mappedFieldId];
+                            }
+                            else if (FIELD_IDS_SIZE.contains(fieldId)) //If it is a  size, we get the orig size value
+                            {
+                                for (const auto &sizeFieldId : FIELD_IDS_SIZE)
                                 {
-                                    origValue = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][sizeFieldId];
+                                    if (m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom].contains(sizeFieldId))
+                                    {
+                                        origValue = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][sizeFieldId];
+                                    }
                                 }
                             }
-                        }
-                        if (FIELD_IDS_FILLER_NO_SOURCES.contains(fieldId))
-                        {
-                            const auto &filler = FIELD_IDS_FILLER_NO_SOURCES[fieldId];
-                            const auto &fillerValue = filler(countryCodeFrom,
-                                                             countryCodeTo,
-                                                             langCodeTo,
-                                                             m_countryCode_langCode_keywords,
-                                                             m_gender,
-                                                             m_age,
-                                                             origValue);
-                            _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
-                                                   fieldId,
-                                                   fillerValue);
-                        }
-                        else if (FIELD_IDS_PUT_FIRST_VALUE.contains(fieldId))
-                        {
-                            Q_ASSERT(m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo].contains(fieldId));
-                            const auto &validValues = m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo][fieldId];
-                            _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
-                                                   fieldId,
-                                                   validValues[0]);
-                        }
-                        else if (!m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo].contains(fieldId))
-                        {
-                            if (FIELD_IDS_FILLER.contains(fieldId))
+                            if (FIELD_IDS_FILLER_NO_SOURCES.contains(fieldId))
                             {
-                                const auto &filler = FIELD_IDS_FILLER[fieldId];
+                                const auto &filler = FIELD_IDS_FILLER_NO_SOURCES[fieldId];
                                 const auto &fillerValue = filler(countryCodeFrom,
                                                                  countryCodeTo,
                                                                  langCodeTo,
@@ -1843,6 +1944,46 @@ void TemplateMergerFiller::_fillDataAutomatically()
                                 _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
                                                        fieldId,
                                                        fillerValue);
+                            }
+                            else if (FIELD_IDS_PUT_FIRST_VALUE.contains(fieldId))
+                            {
+                                Q_ASSERT(m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo].contains(fieldId));
+                                const auto &validValues = m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo][fieldId];
+                                _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
+                                                       fieldId,
+                                                       validValues[0]);
+                            }
+                            else if (!m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo].contains(fieldId))
+                            {
+                                if (FIELD_IDS_FILLER.contains(fieldId))
+                                {
+                                    const auto &filler = FIELD_IDS_FILLER[fieldId];
+                                    if (origValue.isValid())
+                                    {
+                                        const auto &fillerValue = filler(countryCodeFrom,
+                                                                         countryCodeTo,
+                                                                         langCodeTo,
+                                                                         m_countryCode_langCode_keywords,
+                                                                         m_gender,
+                                                                         m_age,
+                                                                         origValue);
+                                        _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
+                                                               fieldId,
+                                                               fillerValue);
+                                    }
+                                }
+                                else
+                                { // We field the text if a same lang is in orig value and it is not a title
+                                    if (langCodeTo == langCodeFrom
+                                            && !fieldId.contains("item_name")
+                                            && !m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo].contains(fieldId)
+                                            && m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom].contains(fieldId))
+                                    {
+                                        _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo],
+                                                               fieldId,
+                                                               m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][fieldId]);
+                                    }
+                                }
                             }
                         }
                     }
@@ -1943,9 +2084,9 @@ void TemplateMergerFiller::_fillDataLeftChatGpt(
         std::function<void (const QString &)> callBackFinishedError)
 {
     initGptFiller();
-    m_gptFiller->askProductAiDescriptions(
+    m_gptFiller->askFillingTransBullets(
                 [this, callBackFinishedSuccess, callBackFinishedError]() {
-        m_gptFiller->askFillingTransBullets(
+        m_gptFiller->askProductAiDescriptions(
                     [this, callBackFinishedSuccess, callBackFinishedError]() {
             m_gptFiller->askFillingDescBullets(
                         [this, callBackFinishedSuccess, callBackFinishedError]() {
@@ -1993,11 +2134,15 @@ void TemplateMergerFiller::_fillDataLeftChatGptAiDescOnly(
 void TemplateMergerFiller::_fixAlwaysSameValue()
 {
     //m_sku_countryCode_langCode_fieldId_value;
-    QHash<QString, QHash<QString, QHash<QString, QHash<QString, int>>>> countryCode_langCode_fieldId_value_count;
+    //QHash<QString, QHash<QString, QHash<QString, QHash<QString, int>>>>
+            //countryCode_langCode_fieldId_parentSku_value_count;
+    QHash<QString, QHash<QString, QHash<QString, QHash<QString, int>>>>
+            countryCode_langCode_fieldId_value_count;
     for (auto itSku = m_sku_countryCode_langCode_fieldId_value.begin();
          itSku != m_sku_countryCode_langCode_fieldId_value.end(); ++itSku)
     {
         const auto &sku = itSku.key();
+        //const auto &skuParent = m_skuParent_skus
         for (auto itCountryCode = itSku.value().begin();
              itCountryCode != itSku.value().end(); ++itCountryCode)
         {
@@ -2012,11 +2157,14 @@ void TemplateMergerFiller::_fixAlwaysSameValue()
                     if (itFieldId != itLangCode.value().end())
                     {
                         const auto &value = itFieldId.value().toString();
-                        if (!countryCode_langCode_fieldId_value_count[countryCode][langCode][fieldId].contains(value))
+                        if (!value.isEmpty())
                         {
-                            countryCode_langCode_fieldId_value_count[countryCode][langCode][fieldId][value] = 0;
+                            if (!countryCode_langCode_fieldId_value_count[countryCode][langCode][fieldId].contains(value))
+                            {
+                                countryCode_langCode_fieldId_value_count[countryCode][langCode][fieldId][value] = 0;
+                            }
+                            ++countryCode_langCode_fieldId_value_count[countryCode][langCode][fieldId][value];
                         }
-                        ++countryCode_langCode_fieldId_value_count[countryCode][langCode][fieldId][value];
                     }
                 }
             }
@@ -2114,6 +2262,7 @@ void TemplateMergerFiller::_createToFillXlsx()
             }
         }
         QSet<int> allColIndexes;
+        ++row;
         for (const auto &sku : m_skus)
         {
             const auto &fieldId_value = m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo];
@@ -2245,6 +2394,8 @@ void TemplateMergerFiller::_readMandatory(
                     || FIELD_IDS_PUT_FIRST_VALUE.contains(fieldId)
                     || FIELD_IDS_FILLER_NO_SOURCES.contains(fieldId)
                     || FIELD_IDS_EXTRA_MANDATORY.contains(fieldId)
+                    || (PRODUCT_TYPE_FIELD_IDS_EXTRA_MANDATORY.contains(m_productType)
+                        && PRODUCT_TYPE_FIELD_IDS_EXTRA_MANDATORY[m_productType].contains(fieldId))
                     )
                 {
                     bool toExclude = false;
@@ -2367,6 +2518,8 @@ void TemplateMergerFiller::_readValidValues(
                     const auto &patternFieldId = it.key();
                     if (fieldId.contains(patternFieldId))
                     {
+                        bool found = false;
+                        QString lastFromValue;
                         const auto &valuesEquivalent = it.value();
                         for (auto itSku = m_sku_countryCode_langCode_fieldId_origValue.begin();
                              itSku != m_sku_countryCode_langCode_fieldId_origValue.end(); ++itSku)
@@ -2378,6 +2531,7 @@ void TemplateMergerFiller::_readValidValues(
                                 if (m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom].contains(fieldId))
                                 {
                                     const QString &fromValue = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][fieldId].toString();
+                                    lastFromValue = fromValue;
                                     if (valuesEquivalent.contains(fromValue))
                                     {
                                         for (const auto &possibleValue : possibleValues)
@@ -2385,13 +2539,19 @@ void TemplateMergerFiller::_readValidValues(
                                             if (valuesEquivalent.contains(possibleValue))
                                             {
                                                 m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId] = possibleValue;
+                                                found = true;
                                                 break;
                                             }
                                         }
                                     }
                                 }
                             }
+                            else
+                            {
+                                found = true; // not needed
+                            }
                         }
+                        Q_ASSERT(found); // Check fromValue / possibleValues and fieldId
                     }
                 }
             }

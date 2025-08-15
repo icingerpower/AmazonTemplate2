@@ -8,6 +8,7 @@
 #include <QPair>
 #include <QList>
 #include <QJsonObject>
+#include <QSharedPointer>
 
 #include "SkuInfo.h"
 #include "PromptInfo.h"
@@ -97,6 +98,7 @@ private:
     QHash<QString, QHash<QString, QJsonObject>> m_skuParent_fieldId_jsonSelect;
     QHash<QString, QHash<QString, QHash<QString, QJsonObject>>> m_skuParent_colorOrig_fieldId_jsonText;
 
+    QSharedPointer<QSettings> settings() const;
     QHash<QString, QHash<QString, QJsonObject>> m_skuParent_fieldId_jsonReplySelect;
     QHash<QString, QHash<QString, QHash<QString, QJsonObject>>> m_skuParent_colorOrig_fieldId_jsonReplyText;
     QHash<QString, QHash<QString, QJsonObject>> m_skuParent_langCode_jsonReplyTitles;
@@ -110,8 +112,7 @@ private:
     void _askFillingSelects(const QHash<QString, QHash<QString, QHash<QString, QHash<QString, QHash<QString, JsonSourceInfos> > > > > &skuParent_color_countryCode_langCode_fieldId_jsonSourceSelect
             , std::function<void()> callbackFinishedSuccess
             , std::function<void(const QString &)> callbackFinishedFailure);
-    void _askFillingTexts(
-            const QHash<QString, QHash<QString, QHash<QString, JsonSourceInfos>>> &skuParent_color_fieldId_jsonSourceText
+    void _askFillingTexts(const QHash<QString, QHash<QString, QHash<QString, JsonSourceInfos> > > &skuParent_color_fieldId_jsonSourceText
             , std::function<void()> callbackFinishedSuccess
             , std::function<void(const QString &)> callbackFinishedFailure);
     void _askFillingTransBullets(
@@ -139,6 +140,7 @@ private:
     JsonReplyDescBullets *m_jsonReplyDescBullets;
     JsonReplyTransBullets *m_jsonReplyTransBullets;
     JsonReplyTitles *m_jsonReplyTitles;
+    static const QString SETTINGS_KEY_MANDATORY;
 };
 
 #endif // GPTFILLER_H

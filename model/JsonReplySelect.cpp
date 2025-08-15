@@ -16,6 +16,18 @@ You will have to replace each "values" by "value" and select only one value that
 Now produce the JSON.)"
 );
 
+const QString JsonReplySelect::PROMPT_TRANSLATE
+= QString::fromUtf8(
+            R"(I need to create a product page for amazon (FBA) with a page template to fill.
+We always use the metric unit system when there is a choice.
+Return your answer only as a single JSON object matching the following pattern (no extra keys, no comments, no prose):
+%3
+You will have to replace each "values" by "value" and select only one value that match the previous details.
+You need to select a "value" that match what is in "fromValue".
+Now produce the JSON.)"
+);
+
+
 JsonReplySelect::JsonReplySelect(
         const QString &workingDir
         , const QMultiHash<QString, QString> &skuParent_skus
@@ -134,7 +146,8 @@ void JsonReplySelect::record_fieldId_values(
         const auto &sku = itSku.key();
         bool isParent = m_skuParent_skus.contains(sku);
         const auto &curSkuParent = isParent ? sku : (*m_sku_infos)[sku].skuParent;
-        if (curSkuParent == skuParent)
+        const auto &curColorOrig = isParent ? QString{} : (*m_sku_infos)[sku].colorOrig;
+        if (curSkuParent == skuParent && (colorOrig == curColorOrig || colorOrig.isEmpty()) )
         {
             auto &countryCode_langCode_fieldId_value = itSku.value();
             if (countryCode_langCode_fieldId_value.contains(countryCode)
@@ -144,8 +157,13 @@ void JsonReplySelect::record_fieldId_values(
                 {
                     if (!countryCode_langCode_fieldId_value[countryCode][langCode].contains(fieldId))
                     {
+                        Q_ASSERT(!value.toString().isEmpty());
                         countryCode_langCode_fieldId_value[countryCode][langCode][fieldId]
                                 = value;
+                    }
+                    else
+                    {
+                        Q_ASSERT(!countryCode_langCode_fieldId_value[countryCode][langCode][fieldId].toString().isEmpty());
                     }
                 }
             }

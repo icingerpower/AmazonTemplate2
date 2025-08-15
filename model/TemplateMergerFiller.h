@@ -19,15 +19,19 @@ public:
     static const QHash<QString, QString> SHEETS_MANDATORY;
     static const QSet<QString> VALUES_MANDATORY;
     static const QSet<QString> FIELD_IDS_NOT_AI;
+    static const QSet<QString> FIELD_IDS_AI_BUT_REQUIRED_IN_FIRST;
     static const QSet<QString> FIELD_IDS_PUT_FIRST_VALUE;
     static const QSet<QString> FIELD_IDS_EXTRA_MANDATORY;
+    static const QHash<QString, QSet<QString>> PRODUCT_TYPE_FIELD_IDS_EXTRA_MANDATORY;
     static const QSet<QString> FIELD_IDS_PATTERN_REMOVE_AS_MANDATORY;
     static const QSet<QString> FIELD_IDS_ALWAY_SAME_VALUE;
+    static const QSet<QString> FIELD_IDS_ALWAY_SAME_VALUE_CHILD;
     static const QStringList FIELD_IDS_COLOR_NAME;
     static const QStringList FIELD_IDS_SIZE;
     static const QSet<QString> FIELD_IDS_CHILD_ONLY;
-    static const QHash<QString, QSet<QString>> AUTO_SELECT_PATTERN_POSSIBLE_VALUES;
+    static const QMultiHash<QString, QSet<QString>> AUTO_SELECT_PATTERN_POSSIBLE_VALUES;
     static const QHash<QString, QString> MAPPING_FIELD_ID;
+    static const QHash<QString, QHash<QString, QSet<QString>>> COUNTRY_LANG_FIELD_ID_TO_REMOVE;
     enum Version{
         V01
         , V02

@@ -165,7 +165,8 @@ void JsonReplyDescBullets::record_fieldId_values(
         const auto &sku = itSku.key();
         bool isParent = m_skuParent_skus.contains(sku);
         const auto &curSkuParent = isParent ? sku : (*m_sku_infos)[sku].skuParent;
-        if (curSkuParent == skuParent)
+        const auto &curColorOrig = isParent ? QString{} : (*m_sku_infos)[sku].colorOrig;
+        if (curSkuParent == skuParent && (colorOrig == curColorOrig || colorOrig.isEmpty()))
         {
             auto &countryCode_langCode_fieldId_value = itSku.value();
             for (auto itCountryCode = m_countryCode_langCode_fieldIdChildOnly->begin();
@@ -188,6 +189,7 @@ void JsonReplyDescBullets::record_fieldId_values(
                                 if (!isParent || !fieldIdsChildOnly.contains(fieldId))
                                 {
                                     const auto &value = itFieldId.value();
+                                    Q_ASSERT(!value.isEmpty());
                                     if (!countryCode_langCode_fieldId_value[countryCode][langCode].contains(fieldId))
                                     {
                                         countryCode_langCode_fieldId_value[countryCode][langCode][fieldId]

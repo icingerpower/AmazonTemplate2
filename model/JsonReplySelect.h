@@ -7,6 +7,7 @@ class JsonReplySelect : public JsonReplyAbstract
 {
 public:
     static const QString PROMPT;
+    static const QString PROMPT_TRANSLATE;
     JsonReplySelect(
             const QString &workingDir
             , const QMultiHash<QString, QString> &skuParent_skus
