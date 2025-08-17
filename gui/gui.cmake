@@ -18,4 +18,7 @@ SET(GUI_FILES
     ${CMAKE_CURRENT_LIST_DIR}/WidgetAdDescription.cpp
     ${CMAKE_CURRENT_LIST_DIR}/WidgetAdDescription.h
     ${CMAKE_CURRENT_LIST_DIR}/WidgetAdDescription.ui
+    ${CMAKE_CURRENT_LIST_DIR}/DialogPossibleValues.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/DialogPossibleValues.h
+    ${CMAKE_CURRENT_LIST_DIR}/DialogPossibleValues.ui
 )

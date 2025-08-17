@@ -36,6 +36,7 @@ public slots:
     void runPromptsManually();
     void clearPreviousChatgptReplies();
     void displayLog(const QString &logMEssage);
+    void displayPossibleValues();
 
 private slots:
     void onApiKeyChanged(const QString &key);

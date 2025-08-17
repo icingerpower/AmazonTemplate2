@@ -129,7 +129,9 @@ private:
             , std::function<void(const QString &)> callbackFinishedFailure);
     QHash<QString, QHash<QString, QHash<QString, QString> > > _get_sku_countryCode_langCode_varTitleInfos() const;
     int m_nQueries;
+    QString m_lastError;
     std::atomic_int m_nDone;
+    std::atomic_int m_nDoneFailed;
     std::function<void (int, int)> m_callBackProgress;
     std::function<void ()> m_callbackFinishedSuccess;
     std::function<void (const QString &)> m_callbackFinishedFailure;

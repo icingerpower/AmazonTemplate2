@@ -12,6 +12,7 @@
 
 #include "gui/DialogFillAiPrompts.h"
 #include "gui/DialogReviewAiDesc.h"
+#include "gui/DialogPossibleValues.h"
 
 #include "DialogExtractInfos.h"
 
@@ -45,6 +46,7 @@ void MainWindow::_setGenerateButtonsEnabled(bool enable)
     ui->buttonGenerate->setEnabled(enable);
     ui->buttonGenAiDesc->setEnabled(enable);
     ui->buttonReviewAiDesc->setEnabled(enable);
+    ui->buttonDisplayPossibleValues->setEnabled(enable);
     ui->buttonRunPromptsManually->setEnabled(enable);
 }
 
@@ -157,6 +159,10 @@ void MainWindow::_connectslots()
             &QPushButton::clicked,
             this,
             &MainWindow::clearPreviousChatgptReplies);
+    connect(ui->buttonDisplayPossibleValues,
+            &QPushButton::clicked,
+            this,
+            &MainWindow::displayPossibleValues);
     connect(ui->lineEditOpenAiKey,
             &QLineEdit::textChanged,
             this,
@@ -431,6 +437,54 @@ void MainWindow::clearPreviousChatgptReplies()
 void MainWindow::displayLog(const QString &logMEssage)
 {
     //TODO
+}
+
+void MainWindow::displayPossibleValues()
+{
+    _createTemplateMergerFiller();
+    m_templateMergerFiller->initGptFiller();
+    try
+    {
+        const auto &keywordsFileInfos = m_workingDir.entryInfoList(
+                    QStringList{"keywor*.txt", "Keywor*.txt"}, QDir::Files, QDir::Name);
+        if (keywordsFileInfos.size() == 0)
+        {
+            QMessageBox::information(this,
+                                     tr("Keywords file missing"),
+                                     tr("The keywords.txt file is missing"));
+        }
+        else
+        {
+            const auto &keywordFilePath = keywordsFileInfos.last().absoluteFilePath();
+
+            m_templateMergerFiller->preFillExcelFiles(
+                        keywordFilePath,
+                        getFileModelSources()->getFilePaths()
+                        , getFileModelToFill()->getFilePaths()
+                        , [this](){
+                auto gptFiller = m_templateMergerFiller->gptFiller();
+                const auto &prompts = gptFiller->getProductAiDescriptionsPrompts();
+                DialogPossibleValues dialog{
+                    m_templateMergerFiller, this};
+                dialog.exec();
+            }
+
+            , [this](const QString &error){
+                ui->progressBar->hide();
+                QMessageBox::information(
+                            this,
+                            tr("Error"),
+                            tr("The template files were not created due to an error like ChatGpt. %1").arg(error));
+            });
+        }
+    }
+    catch (const ExceptionTemplateError &exception)
+    {
+        QMessageBox::warning(this,
+                             exception.title(),
+                             exception.error());
+    }
+
 }
 
 void MainWindow::onApiKeyChanged(const QString &key)

@@ -14,6 +14,8 @@ const QStringList TableInfoExtractor::HEADER{
                          , "Size 1"
                          , "Size 2"
                          , "Size num"
+                         , "Model name"
+                         , "Image path"
 };
 const int TableInfoExtractor::IND_SKU{0};
 const int TableInfoExtractor::IND_TITLE{1};
@@ -22,6 +24,8 @@ const int TableInfoExtractor::IND_COLOR_NAME{3};
 const int TableInfoExtractor::IND_SIZE_1{4};
 const int TableInfoExtractor::IND_SIZE_2{5};
 const int TableInfoExtractor::IND_SIZE_NUM{6};
+const int TableInfoExtractor::IND_MODEL_NAME{7};
+const int TableInfoExtractor::IND_IMAGE_PATHS{8};
 
 TableInfoExtractor::TableInfoExtractor(QObject *parent)
     : QAbstractTableModel(parent)
@@ -77,7 +81,29 @@ void TableInfoExtractor::fillGtinTemplate(
 
 QString TableInfoExtractor::pasteSKUs()
 {
-    return _paste(IND_SKU);
+    const QString &error = _paste(IND_SKU);
+    if (error.isEmpty())
+    {
+        for (auto &stringList : m_listOfStringList)
+        {
+            auto modelName = stringList[IND_SKU];
+            if (modelName.startsWith("P-"))
+            {
+                modelName.clear();
+            }
+            else if (modelName.startsWith("CJ"))
+            {
+                modelName.remove(modelName.size()-4, 4);
+            }
+            else if (modelName.contains("-"))
+            {
+                modelName = modelName.split("-")[0];
+            }
+            stringList[IND_MODEL_NAME] = modelName;
+        }
+        emit dataChanged(index(0, IND_MODEL_NAME), index(rowCount()-1, IND_MODEL_NAME));
+    }
+    return error;
 }
 
 QString TableInfoExtractor::_paste(int colIndex)
@@ -159,7 +185,7 @@ QString TableInfoExtractor::pasteTitles()
                     {
                         const QStringList &color_size = varInfo.split(",");
                         stringList[IND_COLOR_NAME] = color_size[0].trimmed();
-                        stringList[IND_COLOR_MAP] = stringList[IND_COLOR_NAME].split(" ").first();
+                        stringList[IND_COLOR_MAP] = stringList[IND_COLOR_NAME].split(" ").first().trimmed();
                         const auto &sizeInfos = color_size.last();
                         QHash<int, int> ind_colInd{{0, IND_SIZE_1}, {1, IND_SIZE_1}};
                         const auto &sizeElements = sizeInfos.split(("="));
@@ -199,29 +225,38 @@ QString TableInfoExtractor::pasteTitles()
     return QString{};
 }
 
-void TableInfoExtractor::generateModelNames()
+void TableInfoExtractor::generateImageNames(QString baseUrl)
 {
-    QStringList modelNames;
-    for (const auto &stringList : m_listOfStringList)
+    if (!baseUrl.endsWith("/") && !baseUrl.endsWith("\\"))
     {
-        auto modelName = stringList[IND_SKU];
-        if (modelName.startsWith("P-"))
-        {
-            modelName.clear();
-        }
-        else if (modelName.startsWith("CJ"))
-        {
-            modelName.remove(modelName.size()-4, 4);
-        }
-        else if (modelName.contains("-"))
-        {
-            modelName = modelName.split("-")[0];
-        }
-
-        modelNames << modelName;
+        baseUrl += "/";
     }
+    QStringList imageUrls;
+    QString lastColor;
+    QString lastSku;
+    QString imageName;
+    for (auto &stringList : m_listOfStringList)
+    {
+        auto sku = stringList[IND_SKU];
+        auto color = stringList[IND_COLOR_NAME];
+        if (sku.startsWith("P-"))
+        {
+            lastColor.clear();
+            lastSku.clear();
+            imageName.clear();
+        }
+        else if (lastColor != color)
+        {
+            imageName = sku + ".jpg";
+            lastColor = color;
+        }
+        const QString &imageUrl = imageName.isEmpty() ? QString{} : baseUrl + imageName;
+        imageUrls << imageUrl;
+        stringList[IND_IMAGE_PATHS] = imageUrl;
+    }
+    emit dataChanged(index(0, IND_IMAGE_PATHS), index(rowCount() - 1, IND_IMAGE_PATHS));
     auto *clipboard = QApplication::clipboard();
-    clipboard->setText(modelNames.join("\n"));
+    clipboard->setText(imageUrls.join("\n"));
 }
 
 void TableInfoExtractor::_clearColumn(int colIndex)

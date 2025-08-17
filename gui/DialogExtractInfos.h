@@ -26,7 +26,7 @@ public slots:
     void pasteSkus();
     void pasteTitles();
     void readGtinCodes();
-    void generateModelNames();
+    void generateImageNames();
 
 private:
     Ui::DialogExtractInfos *ui;

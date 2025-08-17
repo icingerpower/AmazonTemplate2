@@ -35,14 +35,15 @@ Use decimals with a dot in EN.
 Title (title_amz_and_seo): ≤ 100 characters, no color names, natural/classy tone, include 2–3 high-intent keywords relevant to the image (e.g., “cocktail dress”, “evening dress”, “lace bodycon”). No keyword stuffing.
 
 Descriptions (description_amz_*):
-HTML allowed only in these two fields. Use <p>, <b>, <ul>, <li>, <br> and stay < 1500 characters.
+HTML allowed only in these two fields. Use <p>, <b>, <ul>, <li>, <br> and stay between 700 and  1500 characters.
 Structure:
 Hook paragraph for use-cases/occasions.
 5 benefit-led bullets (each starts with a bold label via <b>).
 Close with care/fit/return-safe facts (no guarantees or pricing/shipping promises).
+No mention about return policy.
 Include 3–5 relevant SEO keywords naturally once each.
 
-Bullets arrays (bullets_*): exactly 5 strings each, no HTML, < 250 characters per bullet (please triple check this point).
+Bullets arrays (bullets_*): exactly 5 strings each, no HTML, > 100 characters and < 300 characters per bullet (please triple check this point).
 Bullet 1 = hook/occasion. Bullets 2–5 start with a short benefit label like Fit:, Comfort:, Style:, Care: then an outcome or clothing sizing information when the product has sizes. One emoji at the start of each bullet, and no other emoji in that bullet.
 
 Compliance: No competitor mentions, no “#1/best/100%” claims, no price/shipping/time promises, no medical benefits, no adult content.

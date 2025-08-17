@@ -60,10 +60,10 @@ void DialogExtractInfos::_connectSlots()
             &QPushButton::clicked,
             this,
             &DialogExtractInfos::readGtinCodes);
-    connect(ui->buttonGenerateModelNames,
+    connect(ui->buttonGenerateImageNames,
             &QPushButton::clicked,
             this,
-            &DialogExtractInfos::generateModelNames);
+            &DialogExtractInfos::generateImageNames);
 }
 
 DialogExtractInfos::~DialogExtractInfos()
@@ -164,9 +164,16 @@ void DialogExtractInfos::pasteTitles()
     }
 }
 
-void DialogExtractInfos::generateModelNames()
+void DialogExtractInfos::generateImageNames()
 {
-    getTableInfoExtractor()->generateModelNames();
+    const auto &baseUrl = QInputDialog::getText(
+                this,
+                tr("Base url path"),
+                tr("Enter the base url image path"),
+                QLineEdit::Normal,
+                "https://icinger.fr/cedricteam/images/");
+    // TODO ask folder to retrieve the image name + add one column per image + trigger warning if images are not well named
+    getTableInfoExtractor()->generateImageNames(baseUrl);
 }
 
 void DialogExtractInfos::readGtinCodes()

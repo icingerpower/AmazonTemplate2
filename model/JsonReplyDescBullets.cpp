@@ -5,37 +5,20 @@
 const QString JsonReplyDescBullets::PROMPT
 = QString::fromUtf8(
             R"(I need to create a product page for amazon (FBA) with a page template to fill.
-Return your answer only as a single JSON object matching this pattern (no extra keys, no comments, no prose):.
-{
-  "BE": {
-    "NL": {
-      "description": "TODO",
-      "bullets": ["TODO", "TODO", "TODO", "TODO", "TODO"]
-    },
-    "FR": {
-      "description": "TODO",
-      "bullets": ["TODO", "TODO", "TODO", "TODO", "TODO"]
-    }
-  },
-  "FR": {
-    "FR": {
-      "description": "TODO",
-      "bullets": ["TODO", "TODO", "TODO", "TODO", "TODO"]
-    }
-  }
-}
+
 You will need to translate and/or fix/shorten the description and 5 given bullet points in the local language, adding SEO keywords (no stuffing to keep the bullet points natural).
-Compliance (strict): no medical/therapeutic claims; no competitor mentions; no shipping/price promises; no guarantees/warranties/certifications unless explicitly provided in inputs; avoid #1/best/100% claims.
-Each description < 1500 characters (including spaces).
-Each bullet < 250 characters (including spaces).
+Compliance (strict): no medical/therapeutic claims; no competitor mentions; no shipping/price promises; no guarantees/warranties/certifications unless explicitly provided in inputs; avoid #1/best/100% claims. No mention about return policy.
+Each description > 500 characters and < 1500 characters (including spaces).
+Each bullet > 100 and < 400 characters (including spaces).
 One emoji at the start of each bullet and no html in bullet points.
 including in the description emoji and HTML using only <p>, <b>, <ul>, <li>, <br>.
 This is the description done in english from another prompt that analysed the product images:
 %1
 Those are the bullets points done in english from the other prompt:
 %2
-Check those bullets points and correct them if size is not < 250. Also fix if the following is not respected or not included:
+Check those bullets points and correct them if size is not > 100 and < 400. Also fix if the following is not respected or not included:
 %3
+Return your answer only as a single JSON object matching this pattern (no extra keys, no comments, no prose):.
 This is the input json to complete. It contains the languages and countries to do.
 %4
 Now produce the JSON.)"
@@ -85,8 +68,17 @@ bool JsonReplyDescBullets::isJsonReplyCorrect(
                         const auto &array = subSubReply["bullets"].toArray();
                         if (array.size() == 5)
                         {
-                            int lengthDesc = subSubReply["description"].toString().trimmed().length();
+                            const auto &description = subSubReply["description"].toString();
+                            int lengthDesc = description.trimmed().length();
                             if (lengthDesc < 8 || lengthDesc > 1500)
+                            {
+                                correctReply = false;
+                            }
+                            else if (description.count("<p>") != description.count("</p>"))
+                            {
+                                correctReply = false;
+                            }
+                            else if (description.count("<b>") != description.count("</b>"))
                             {
                                 correctReply = false;
                             }
@@ -94,8 +86,14 @@ bool JsonReplyDescBullets::isJsonReplyCorrect(
                             {
                                 for (const auto &bullet : array)
                                 {
-                                    int lengthBullet = bullet.toString().trimmed().size();
+                                    const auto &bulletString = bullet.toString();
+                                    int lengthBullet = bulletString.trimmed().size();
                                     if (lengthBullet < 8 || lengthBullet > 400)
+                                    {
+                                        correctReply = false;
+                                        break;
+                                    }
+                                    else if (bulletString.contains("/>")) // No HTML allowed
                                     {
                                         correctReply = false;
                                         break;

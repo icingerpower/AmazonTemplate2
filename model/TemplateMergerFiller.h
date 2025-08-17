@@ -32,6 +32,7 @@ public:
     static const QMultiHash<QString, QSet<QString>> AUTO_SELECT_PATTERN_POSSIBLE_VALUES;
     static const QHash<QString, QString> MAPPING_FIELD_ID;
     static const QHash<QString, QHash<QString, QSet<QString>>> COUNTRY_LANG_FIELD_ID_TO_REMOVE;
+    static const QHash<QString, QHash<QString, QHash<QString, QHash<QString, QSet<QString>>>>> TYPE_COUNTRY_LANG_FIELD_ID_POSSIBLE_VALUES;
     enum Version{
         V01
         , V02
@@ -66,10 +67,10 @@ public:
     };
     static const QHash<QString, QStringList> FIELD_IDS_COPY_FROM_OTHER;
     TemplateMergerFiller(
-        const QString &filePathFrom,
-        const QString &customInstructions,
-        const QString &apiKey,
-        std::function<void(QString &logMessage)> callBackLog);
+            const QString &filePathFrom,
+            const QString &customInstructions,
+            const QString &apiKey,
+            std::function<void(QString &logMessage)> callBackLog);
     ~TemplateMergerFiller();
     void clearPreviousChatgptReplies();
     void preFillExcelFiles(const QString &keywordFilePath
@@ -99,6 +100,8 @@ public:
 
     GptFiller *gptFiller() const;
     void initGptFiller();
+
+    const QHash<QString, QHash<QString, QHash<QString, QStringList> > > &countryCode_langCode_fieldId_possibleValues() const;
 
 private:
     Version _getDocumentVersion(QXlsx::Document &document) const;

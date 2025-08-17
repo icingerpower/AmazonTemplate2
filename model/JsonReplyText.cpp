@@ -48,10 +48,10 @@ bool JsonReplyText::isJsonReplyCorrect(
 {
     bool correctReply = true;
     if (JsonReplySelect::isJsonReplyCorrect(skuParent,
-                           color,
-                           countryCodes,
-                           langCodes,
-                           fieldId,
+                                            color,
+                                            countryCodes,
+                                            langCodes,
+                                            fieldId,
                                             jsonReply))
     {
         for (int i=0; i<countryCodes.size(); ++i)
@@ -79,11 +79,19 @@ bool JsonReplyText::isJsonReplyCorrect(
                     return false;
                 }
             }
-            else if (value.size() > 60)
+            else if (value.size() > 60 && !fieldId.contains("pattern"))
             {
                 int TEMP=10;++TEMP;
             }
+            else if (value.size() > 100)
+            {
+                return false;
+            }
         }
+    }
+    else
+    {
+        correctReply = false;
     }
     return correctReply;
 }

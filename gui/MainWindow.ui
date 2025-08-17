@@ -166,6 +166,13 @@
          </widget>
         </item>
         <item>
+         <widget class="QPushButton" name="buttonDisplayPossibleValues">
+          <property name="text">
+           <string>Display possible values</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QPushButton" name="buttonRunPromptsManually">
           <property name="toolTip">
            <string>Paste prompt results manually</string>

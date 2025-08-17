@@ -4,7 +4,7 @@ const QString JsonReplyTransBullets::PROMPT
 = QString::fromUtf8(
             R"(I need to create a product page for amazon (FBA) with a page template to fill.
 You will need to translate the given bullet point in the local language, adding SEO keywords (no stuffing to keep the bullet points natural).
-Compliance (strict): no medical/therapeutic claims; no competitor mentions; no shipping/price promises; no guarantees/warranties/certifications unless explicitly provided in inputs; avoid #1/best/100% claims.
+Compliance (strict): no medical/therapeutic claims; no competitor mentions; no shipping/price promises; no guarantees/warranties/certifications unless explicitly provided in inputs; avoid #1/best/100% claims. No mention about return policy.
 One emoji at the start of each bullet and no html in bullet points.
 For translation to english, add both metric and imperial units without removing words
 For translation from english to another language, remove imperial units
@@ -58,7 +58,7 @@ bool JsonReplyTransBullets::isJsonReplyCorrect(
                     {
                         const auto &bullet = subSubSubReply["value"].toString();
                         int lengthBullet = bullet.trimmed().size();
-                        if (lengthBullet < 8 || lengthBullet > 400)
+                        if (lengthBullet < 8 || lengthBullet > 450)
                         {
                             qDebug() << "JsonReplyTransBullets::isJsonReplyCorrect failed because length is:" << lengthBullet << "-"  << countryCode << "-"  << langCode << "-" << bullet;
                             correctReply = false;

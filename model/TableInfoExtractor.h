@@ -15,6 +15,8 @@ public:
     static const int IND_SIZE_1;
     static const int IND_SIZE_2;
     static const int IND_SIZE_NUM;
+    static const int IND_MODEL_NAME;
+    static const int IND_IMAGE_PATHS;
     explicit TableInfoExtractor(QObject *parent = nullptr);
 
     void fillGtinTemplate(const QString &filePathFrom
@@ -44,7 +46,7 @@ public slots:
     void clear();
     QString pasteSKUs(); // Returns the error if any
     QString pasteTitles(); // Returns the error if any
-    void generateModelNames();
+    void generateImageNames(QString baseUrl);
 
 private:
     static const QStringList HEADER;

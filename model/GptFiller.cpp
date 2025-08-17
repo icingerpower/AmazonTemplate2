@@ -222,6 +222,7 @@ void GptFiller::askProductAiDescriptions(
         std::function<void (const QString &)> callbackFinishedFailure)
 {
     m_nDone = 0;
+    m_nDoneFailed = 0;
     m_nQueries = 0;
 
     QHash<QString, QSet<QString>> parent_colorDone;
@@ -278,21 +279,31 @@ void GptFiller::askProductAiDescriptions(
                                     );
                         // TODO if fails, I need to find a non-async way to ask to fix prompt
                     }
-                    , [this, image, info, skuParent, callbackFinishedSuccess](const QString &jsonReply){
+                    , [this, image, info, skuParent, callbackFinishedSuccess, callbackFinishedFailure](const QString &jsonReply){
                         ++m_nDone;
                         qDebug() << "GptFiller::askProductAiDescriptions OK" << m_nDone << "/" << m_nQueries;
-                        if (m_nDone == m_nQueries)
+                        if (m_nDone + m_nDoneFailed == m_nQueries)
                         {
                             OpenAi::instance()->setMaxInFlight(2);
                             OpenAi::instance()->setMinSpacingMs(1000);
-                            callbackFinishedSuccess();
+                            if (m_nDoneFailed == 0)
+                            {
+                                callbackFinishedSuccess();
+                            }
+                            else
+                            {
+                                callbackFinishedFailure(m_lastError);
+                            }
                         }
                     }
                     , [this, callbackFinishedFailure](const QString &jsonReply){
-                        ++m_nDone;
+                        ++m_nDoneFailed;
                         qDebug() << "GptFiller::askProductAiDescriptions KO" << m_nDone << "/" << m_nQueries;
-                        if (m_nDone == m_nQueries)
+                        m_lastError = jsonReply;
+                        if (m_nDone + m_nDoneFailed == m_nQueries)
                         {
+                            OpenAi::instance()->setMaxInFlight(2);
+                            OpenAi::instance()->setMinSpacingMs(1000);
                             callbackFinishedFailure("AI description: " + jsonReply);
                         }
                     }
@@ -321,6 +332,7 @@ void GptFiller::askFillingTransBullets(
 {
     m_nDone = 0;
     m_nQueries = 0;
+    m_nDoneFailed = 0;
     QHash<QString, QSet<QString>> skuParents_colorsDone;
     QHash<QString, QHash<QString, QHash<QString, JsonSourceInfos>>> skuParent_color_fieldId_jsonSourceTransBullets;
 
@@ -455,18 +467,27 @@ void GptFiller::_askFillingTransBullets(
                                 , jsonReply
                                 );
                 }
-                , [this, callbackFinishedSuccess](const QString &jsonReply){
+                , [this, callbackFinishedSuccess, callbackFinishedFailure](const QString &jsonReply){
                     ++m_nDone;
                     qDebug() << "GptFiller::_askFillingTransBullets OK" << m_nDone << "/" << m_nQueries;
-                    if (m_nDone == m_nQueries)
+                    if (m_nDone + m_nDoneFailed == m_nQueries)
                     {
-                        callbackFinishedSuccess();
+                        if (m_nDoneFailed > 0)
+                        {
+                            callbackFinishedFailure("Select: " + m_lastError);
+                        }
+                        else
+                        {
+                            callbackFinishedSuccess();
+
+                        }
                     }
                 }
                 , [this, callbackFinishedFailure](const QString &jsonReply){
-                    ++m_nDone;
+                    ++m_nDoneFailed;
+                    m_lastError = jsonReply;
                     qDebug() << "GptFiller::_askFillingTransBullets KO" << m_nDone << "/" << m_nQueries;
-                    if (m_nDone == m_nQueries)
+                    if (m_nDone + m_nDoneFailed == m_nQueries)
                     {
                         callbackFinishedFailure("Select: " + jsonReply);
                     }
@@ -483,6 +504,7 @@ void GptFiller::askFillingDescBullets(
 {
     m_nDone = 0;
     m_nQueries = 0;
+    m_nDoneFailed = 0;
     QHash<QString, QSet<QString>> skuParents_colorsDone;
     QHash<QString, QHash<QString, JsonSourceInfos>> skuParent_color_jsonSourceDescBullets;
 
@@ -601,18 +623,26 @@ void GptFiller::_askFillingDescBullets(
                             , jsonReply
                             );
             }
-            , [this, callbackFinishedSuccess](const QString &jsonReply){
+            , [this, callbackFinishedSuccess, callbackFinishedFailure](const QString &jsonReply){
                 ++m_nDone;
                 qDebug() << "GptFiller::_askFillingDescBullets OK" << m_nDone <<  "/" << m_nQueries;
-                if (m_nDone == m_nQueries)
+                if (m_nDone + m_nDoneFailed == m_nQueries)
                 {
-                    callbackFinishedSuccess();
+                    if (m_nDoneFailed > 0)
+                    {
+                        callbackFinishedSuccess();
+                    }
+                    else
+                    {
+                        callbackFinishedFailure("Text: " + m_lastError);
+                    }
                 }
             }
             , [this, callbackFinishedFailure](const QString &jsonReply){
-                ++m_nDone;
+                ++m_nDoneFailed;
+                m_lastError = jsonReply;
                 qDebug() << "GptFiller::_askFillingDescBullets " << m_nDone <<  "/" << m_nQueries;
-                if (m_nDone == m_nQueries)
+                if (m_nDone + m_nDoneFailed == m_nQueries)
                 {
                     callbackFinishedFailure("Text: " + jsonReply);
                 }
@@ -630,6 +660,7 @@ void GptFiller::askFillingSelectsAndTexts(
 {
     m_nDone = 0;
     m_nQueries = 0;
+    m_nDoneFailed = 0;
     QHash<QString, QSet<QString>> skuParents_colorsDone;
 
     QHash<QString, QHash<QString, QHash<QString, JsonSourceInfos>>> skuParent_color_fieldId_jsonSourceText;
@@ -655,7 +686,7 @@ void GptFiller::askFillingSelectsAndTexts(
                     for (const auto &fieldId : itLangCode.value())
                     {
                         static const QSet<QString> extraPatternToIgnore{
-                            "bullet_point", "product_description", "item_name"};
+                            "generic_keywords", "list_price", "bullet_point", "product_description", "item_name"};
                         bool toIgnore = false;
                         for (const auto &pattern : extraPatternToIgnore)
                         {
@@ -724,6 +755,7 @@ void GptFiller::askFillingSelectsAndTexts(
                                     }
                                     else
                                     {
+                                        Q_ASSERT(!fieldId.contains("apparel_size"));
                                         if (!m_jsonReplyText->reloadJson(
                                                     countryCodeTo,
                                                     langCodeTo,
@@ -869,18 +901,25 @@ void GptFiller::_askFillingSelects(
                             }
                             return false;
                         }
-                        , [this, callbackFinishedSuccess](const QString &jsonReply){
+                        , [this, callbackFinishedSuccess, callbackFinishedFailure](const QString &jsonReply){
                             ++m_nDone;
                             qDebug() << "GptFiller::askFillingSelectsAndTexts OK" << m_nDone << "/" << m_nQueries;
-                            if (m_nDone == m_nQueries)
+                            if (m_nDone + m_nDoneFailed == m_nQueries)
                             {
-                                callbackFinishedSuccess();
+                                if (m_nDoneFailed > 0)
+                                {
+                                    callbackFinishedFailure("Select: " + m_lastError);
+                                }
+                                else
+                                {
+                                    callbackFinishedSuccess();
+                                }
                             }
                         }
                         , [this, callbackFinishedFailure](const QString &jsonReply){
-                            ++m_nDone;
+                            ++m_nDoneFailed;
                             qDebug() << "GptFiller::askFillingSelectsAndTexts KO" << m_nDone << "/" << m_nQueries;
-                            if (m_nDone == m_nQueries)
+                            if (m_nDone + m_nDoneFailed == m_nQueries)
                             {
                                 callbackFinishedFailure("Select: " + jsonReply);
                             }
@@ -927,7 +966,7 @@ void GptFiller::_askFillingTexts(
                 {
                     const auto &jsonSource = _getStringFromJson(jsonObjectSource.object);
                     auto customInstructions = (*m_sku_infos)[skuFirst].customInstructions;
-                    if (fieldId.contains("style"))
+                    if (fieldId.contains("style") || fieldId.contains("pattern"))
                     {
                         customInstructions += ". Your reply \"value\" should be under 60 characters.";
                     }
@@ -959,18 +998,26 @@ void GptFiller::_askFillingTexts(
                                 , jsonReply
                                 );
                 }
-                , [this, callbackFinishedSuccess](const QString &jsonReply){
+                , [this, callbackFinishedSuccess, callbackFinishedFailure](const QString &jsonReply){
                     ++m_nDone;
                     qDebug() << "GptFiller::askFillingSelectsAndTexts OK" << m_nDone << "/" << m_nQueries;
-                    if (m_nDone == m_nQueries)
+                    if (m_nDone + m_nDoneFailed == m_nQueries)
                     {
-                        callbackFinishedSuccess();
+                        if (m_nDoneFailed > 0)
+                        {
+                            callbackFinishedFailure(m_lastError);
+                        }
+                        else
+                        {
+                            callbackFinishedSuccess();
+                        }
                     }
                 }
                 , [this, callbackFinishedFailure](const QString &jsonReply){
-                    ++m_nDone;
+                    ++m_nDoneFailed;
+                    m_lastError = jsonReply;
                     qDebug() << "GptFiller::askFillingSelectsAndTexts KO" << m_nDone << "/" << m_nQueries;
-                    if (m_nDone == m_nQueries)
+                    if (m_nDone + m_nDoneFailed == m_nQueries)
                     {
                         callbackFinishedFailure("Text: " + jsonReply);
                     }
@@ -988,6 +1035,7 @@ void GptFiller::askFillingTitles(
     m_sku_countryCode_langCode_varTitleInfos = _get_sku_countryCode_langCode_varTitleInfos();
     m_nDone = 0;
     m_nQueries = 0;
+    m_nDoneFailed = 0;
     QSet<QString> skuParentsDone;
     QHash<QString, JsonSourceInfos> skuParent_jsonSourceTitles;
 
