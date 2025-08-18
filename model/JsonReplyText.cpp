@@ -65,7 +65,7 @@ bool JsonReplyText::isJsonReplyCorrect(
             {
                 return false;
             }
-            if (fieldId.contains("color") || fieldId.contains("type"))
+            if (fieldId.contains("color") || fieldId.contains("type") || fieldId.contains("pattern"))
             {
                 if (value.size() > 30)
                 {
@@ -79,7 +79,7 @@ bool JsonReplyText::isJsonReplyCorrect(
                     return false;
                 }
             }
-            else if (value.size() > 60 && !fieldId.contains("pattern"))
+            else if (value.size() > 60)
             {
                 int TEMP=10;++TEMP;
             }

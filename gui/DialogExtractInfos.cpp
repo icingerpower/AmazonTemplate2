@@ -64,6 +64,10 @@ void DialogExtractInfos::_connectSlots()
             &QPushButton::clicked,
             this,
             &DialogExtractInfos::generateImageNames);
+    connect(ui->buttonCheckImageFileNames,
+            &QPushButton::clicked,
+            this,
+            &DialogExtractInfos::checkImageFileNames);
 }
 
 DialogExtractInfos::~DialogExtractInfos()
@@ -174,6 +178,45 @@ void DialogExtractInfos::generateImageNames()
                 "https://icinger.fr/cedricteam/images/");
     // TODO ask folder to retrieve the image name + add one column per image + trigger warning if images are not well named
     getTableInfoExtractor()->generateImageNames(baseUrl);
+}
+
+void DialogExtractInfos::checkImageFileNames()
+{
+    QSettings settings;
+    QString settingKeyUrl = "DialogOpenConifg__checkImageFileNames_url";
+    QString lastUrl = settings.value(
+                settingKeyUrl, "https://icinger.fr/cedricteam/images/").toString();
+    const auto &baseUrl = QInputDialog::getText(
+                this,
+                tr("Base url path"),
+                tr("Enter the base url image path"),
+                QLineEdit::Normal,
+                lastUrl);
+    if (!baseUrl.isEmpty())
+    {
+        settings.setValue(settingKeyUrl, lastUrl);
+        QString settingKey = "DialogOpenConifg__checkImageFileNames";
+        QString lastDirPath = settings.value(
+                    settingKey, QDir().absolutePath()).toString();
+        const QString &dirPath = QFileDialog::getExistingDirectory(
+                    this,
+                    tr("Choose a directory"),
+                    lastDirPath,
+                    QFileDialog::DontUseNativeDialog);
+        if (!dirPath.isEmpty())
+        {
+            const QString &error
+                    = getTableInfoExtractor()->readAvailableImage(baseUrl, dirPath);
+            settings.setValue(settingKey, dirPath);
+            if (!error.isEmpty())
+            {
+                QMessageBox::information(
+                            this,
+                            tr("Image issue"),
+                            error);
+            }
+        }
+    }
 }
 
 void DialogExtractInfos::readGtinCodes()

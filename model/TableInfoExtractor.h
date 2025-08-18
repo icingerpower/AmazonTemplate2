@@ -41,6 +41,8 @@ public:
 
     Qt::ItemFlags flags(const QModelIndex &index) const override;
     QStringList readGtin(const QString &gtinFilePath) const;
+    int getColIndexImage(int indImage) const;
+    QString readAvailableImage(QString baseUrl, const QString &dirPath);
 
 public slots:
     void clear();
@@ -53,6 +55,7 @@ private:
     QList<QStringList> m_listOfStringList;
     QString _paste(int colIndex);
     void _clearColumn(int colIndex);
+    QStringList _getImageFileNames() const;
 };
 
 #endif // TABLEINFOEXTRACTOR_H

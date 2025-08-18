@@ -27,6 +27,7 @@ public slots:
     void pasteTitles();
     void readGtinCodes();
     void generateImageNames();
+    void checkImageFileNames();
 
 private:
     Ui::DialogExtractInfos *ui;

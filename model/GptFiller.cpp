@@ -966,9 +966,13 @@ void GptFiller::_askFillingTexts(
                 {
                     const auto &jsonSource = _getStringFromJson(jsonObjectSource.object);
                     auto customInstructions = (*m_sku_infos)[skuFirst].customInstructions;
-                    if (fieldId.contains("style") || fieldId.contains("pattern"))
+                    if (fieldId.contains("style"))
                     {
-                        customInstructions += ". Your reply \"value\" should be under 60 characters.";
+                        customInstructions += ". Your reply \"value\" should be under 50 characters.";
+                    }
+                    else if (fieldId.contains("pattern"))
+                    {
+                        customInstructions += ". Your reply \"value\" should be under 40 characters.";
                     }
                     else if (fieldId.contains("color") || fieldId.contains("type"))
                     {

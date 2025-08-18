@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QFile>
+#include <QDir>
 
 #include <xlsxdocument.h>
 
@@ -16,6 +17,14 @@ const QStringList TableInfoExtractor::HEADER{
                          , "Size num"
                          , "Model name"
                          , "Image path"
+                         , "Image path 2"
+                         , "Image path 3"
+                         , "Image path 4"
+                         , "Image path 5"
+                         , "Image path 6"
+                         , "Image path 7"
+                         , "Image path 8"
+                         , "Image path 9"
 };
 const int TableInfoExtractor::IND_SKU{0};
 const int TableInfoExtractor::IND_TITLE{1};
@@ -234,7 +243,28 @@ void TableInfoExtractor::generateImageNames(QString baseUrl)
     QStringList imageUrls;
     QString lastColor;
     QString lastSku;
+    const auto &imageFileNames = _getImageFileNames();
     QString imageName;
+    int i=0;
+    for (auto &imageFileName : imageFileNames)
+    {
+        const QString &imageUrl = imageFileName.isEmpty() ? QString{} : baseUrl + imageFileName;
+        imageUrls << imageUrl;
+        m_listOfStringList[i][IND_IMAGE_PATHS] = imageUrl;
+        ++i;
+    }
+    emit dataChanged(index(0, IND_IMAGE_PATHS), index(rowCount() - 1, IND_IMAGE_PATHS));
+    auto *clipboard = QApplication::clipboard();
+    clipboard->setText(imageUrls.join("\n"));
+}
+
+QStringList TableInfoExtractor::_getImageFileNames() const
+{
+    QStringList imageUrls;
+    QString lastColor;
+    QString lastSku;
+    QStringList imageFileNames;
+    QString imageFileName;
     for (auto &stringList : m_listOfStringList)
     {
         auto sku = stringList[IND_SKU];
@@ -243,20 +273,16 @@ void TableInfoExtractor::generateImageNames(QString baseUrl)
         {
             lastColor.clear();
             lastSku.clear();
-            imageName.clear();
+            imageFileName.clear();
         }
         else if (lastColor != color)
         {
-            imageName = sku + ".jpg";
+            imageFileName = sku + ".jpg";
             lastColor = color;
         }
-        const QString &imageUrl = imageName.isEmpty() ? QString{} : baseUrl + imageName;
-        imageUrls << imageUrl;
-        stringList[IND_IMAGE_PATHS] = imageUrl;
+        imageFileNames << imageFileName;
     }
-    emit dataChanged(index(0, IND_IMAGE_PATHS), index(rowCount() - 1, IND_IMAGE_PATHS));
-    auto *clipboard = QApplication::clipboard();
-    clipboard->setText(imageUrls.join("\n"));
+    return imageFileNames;
 }
 
 void TableInfoExtractor::_clearColumn(int colIndex)
@@ -394,6 +420,108 @@ QStringList TableInfoExtractor::readGtin(const QString &gtinFilePath) const
     return GTINs;
 }
 
+int TableInfoExtractor::getColIndexImage(int indImage) const
+{
+    return IND_IMAGE_PATHS + indImage;
+}
+
+QString TableInfoExtractor::readAvailableImage(QString baseUrl, const QString &dirPath)
+{
+    if (!baseUrl.endsWith("/") && !baseUrl.endsWith("\\"))
+    {
+        baseUrl += "/";
+    }
+    const auto &imageFileNames = _getImageFileNames();
+    QMap<QString, QStringList> fileNameFirst_allFileNames;
+    QSet<QString> validImageFileNames;
+    for (const auto &imageFileName : imageFileNames)
+    {
+        if (!fileNameFirst_allFileNames.contains(imageFileName))
+        {
+            validImageFileNames.insert(imageFileName);
+            QFileInfo fileInfo{imageFileName};
+            const QString &imageFileNamePattern = fileInfo.baseName() + "-0%1.jpg";
+            fileNameFirst_allFileNames[imageFileName] << imageFileName;
+            for (int i=2; i<=9; ++i)
+            {
+                const auto &curImageFileName = imageFileNamePattern.arg(i);
+                fileNameFirst_allFileNames[imageFileName] << imageFileNamePattern.arg(i);
+                validImageFileNames.insert(curImageFileName);
+            }
+        }
+    }
+
+    QDir dir{dirPath};
+    const auto &dirImageFileNames = dir.entryList(
+                QStringList{"*.jpg"}, QDir::Files, QDir::Name);
+
+    for (int i=0; i<imageFileNames.size(); ++i)
+    {
+        const auto &skuImageFileName = imageFileNames[i];
+        if (fileNameFirst_allFileNames.contains(skuImageFileName))
+        {
+            const auto &allImageFileNames = fileNameFirst_allFileNames[skuImageFileName];
+            for (int j=0; j<allImageFileNames.size(); ++j)
+            {
+                const auto &curImageFileName = allImageFileNames[j];
+                if (dirImageFileNames.contains(curImageFileName))
+                {
+                    int imageColIndex = getColIndexImage(j);
+                    m_listOfStringList[i][imageColIndex]
+                            = baseUrl + curImageFileName;
+                }
+            }
+        }
+    }
+    emit dataChanged(index(0, 0), index(rowCount() - 1, columnCount() - 1));
+
+    QStringList wrongImageFileNames;
+    for (const auto &dirImageFileName : dirImageFileNames)
+    {
+        if (!validImageFileNames.contains(dirImageFileName))
+        {
+            wrongImageFileNames.append(dirImageFileName);
+        }
+    }
+
+    QMap<QString, int> missingImageFileNames;
+    for (auto it = fileNameFirst_allFileNames.begin();
+         it != fileNameFirst_allFileNames.end(); ++it)
+    {
+        int count = 0;
+        for (const auto &curImageFileName : it.value())
+        {
+            if (dirImageFileNames.contains(curImageFileName))
+            {
+                ++count;
+            }
+        }
+        if (count < 5)
+        {
+            missingImageFileNames[it.key()] = count;;
+        }
+    }
+    QString message;
+    if (missingImageFileNames.size() > 0)
+    {
+        message += "The following products have missing images:";
+        for (auto it = missingImageFileNames.begin();
+             it != missingImageFileNames.end(); ++it)
+        {
+            message += "\n" + it.key() + " (" + QString::number(it.value()) + "/5 images found)";
+        }
+    }
+    if (wrongImageFileNames.size() > 0)
+    {
+        if (!message.isEmpty())
+        {
+            message += "\n\n";
+        }
+        message += "The following images have a wrong file name:\n";
+        message += wrongImageFileNames.join("\n");
+    }
+    return message;
+}
 
 void TableInfoExtractor::clear()
 {

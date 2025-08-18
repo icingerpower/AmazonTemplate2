@@ -259,7 +259,7 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_CLOTH
             return "TTG";
         }
     }
-    if (countryTo == "IE")
+    if (countryTo == "IE" || countryTo == "COM" || countryTo == "CA")
     {
         static const QHash<QString, QString> equivalences
         {
@@ -489,6 +489,7 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_EXTRA_MANDATORY{
     "color_name", "color#1.value"
     , "batteries_required" , "batteries_required#1.value"
     , "supplier_declared_dg_hz_regulation1", "supplier_declared_dg_hz_regulation#1.value"
+    , "supplier_declared_material_regulation1", "supplier_declared_material_regulation1#1.value"
     , "product_description", "product_description#1.value"
     , "bullet_point1", "bullet_point#1.value"
     , "bullet_point2", "bullet_point#2.value"
@@ -549,7 +550,7 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_PATTERN_REMOVE_AS_MANDATORY{
     , "united_nations_regulatory"
     , "url_"
     , "sheet_url"
-    , "material_regulation"
+    //, "material_regulation"
     , "battery_cell"
     , "dsa_"
     , "flavor"
@@ -716,6 +717,8 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "item_package_dimensions#1.width.unit"
     //, "batteries_required", "batteries_required#1.value"
     // , "supplier_declared_dg_hz_regulation1", "supplier_declared_dg_hz_regulation#1.value"
+    , "supplier_declared_material_regulation1"
+    , "supplier_declared_material_regulation1#1.value"
     , "condition_type"
     , "condition_type#1.value"
     , "currency"
@@ -785,7 +788,7 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "merchant_shipping_group#1.value"
     , "item_type_name", "item_type_name#1.value"
     , "special_size_type", "special_size_type#1.value"
-    , "item_type", "item_type"
+    //, "item_type", "item_type"
     , "pattern_name", "pattern_name"
     , "model_name", "model_name#1.value"
     , "model", "model"
@@ -964,6 +967,34 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Sayısal" // TR-tr: suggested (≈40% wrong)
                 }
                 );
+
+    pattern_possibleValues.insert(
+      "supplier_declared_dg_hz_regulation1",
+      QSet<QString>{
+        "Not Applicable",       // IT-it, FR-fr, CA-en, IE-en, COM-en, ES-es, DE-de
+        "Ej tillämpbar",        // SE-se
+        "Non applicable",       // CA-fr, BE-fr
+        "Uygun Değil",          // TR-tr
+        "Niet van toepassing"   // NL-nl, BE-nl
+      }
+    );
+
+    pattern_possibleValues.insert(
+      "supplier_declared_material_regulation1",
+      QSet<QString>{
+        "Non applicabile",     // IT-it
+        "Ej tillämpbar",       // SE-se — suggested (no list); ~60% confidence
+        "Non applicable",      // FR-fr, CA-fr (+ BE-fr — suggested; ~80%)
+        "Not Applicable",      // CA-en, COM-en (+ IE-en — suggested; ~90%)
+        "Uygulanamaz",         // TR-tr — suggested (no list); ~70%
+        "Nicht zutreffend",    // DE-de, NL-nl
+        "Niet van toepassing", // BE-nl — suggested (no list); ~70%
+        "No aplicable"         // ES-es
+      }
+    );
+
+    //supplier_declared_material_regulation1
+            //supplier_declared_dg_hz_regulation1
     return pattern_possibleValues;
 }();
 
@@ -1372,7 +1403,7 @@ QSet<QString> TemplateMergerFiller::getAllMandatoryFieldIds() const
             mandatoryFieldIds.unite(itLangCode.value());
         }
     }
-    mandatoryFieldIds.subtract(FIELD_IDS_EXTRA_MANDATORY);
+    mandatoryFieldIds.subtract(FIELD_IDS_PATTERN_REMOVE_AS_MANDATORY);
     return mandatoryFieldIds;
 }
 
@@ -1407,13 +1438,15 @@ void TemplateMergerFiller::preFillExcelFiles(
         text += remainingMandatoryFieldIdsSorted.join("\n");
         qDebug() << text;
         m_callBackLog(text);
+        auto notMandatoryFieldIdsCopy = notMandatoryFieldIds;
+        notMandatoryFieldIdsCopy.subtract(FIELD_IDS_EXTRA_MANDATORY);
         for (auto itCountryCode = m_countryCode_langCode_fieldIdMandatory.begin();
              itCountryCode != m_countryCode_langCode_fieldIdMandatory.end(); ++itCountryCode)
         {
             for (auto itLangCode = itCountryCode.value().begin();
                  itLangCode != itCountryCode.value().end(); ++itLangCode)
             {
-                itLangCode.value().subtract(notMandatoryFieldIds);
+                itLangCode.value().subtract(notMandatoryFieldIdsCopy);
             }
         }
         delete mandatoryFieldIds;
@@ -1448,6 +1481,8 @@ void TemplateMergerFiller::fillExcelFiles(
                                       text += remainingMandatoryFieldIdsSorted.join("\n");
                                       qDebug() << text;
                                       m_callBackLog(text);
+                                      auto notMandatoryFieldIdsCopy = notMandatoryFieldIds;
+                                      notMandatoryFieldIdsCopy.subtract(FIELD_IDS_EXTRA_MANDATORY);
                                       for (auto itCountryCode = m_countryCode_langCode_fieldIdMandatory.begin();
                                            itCountryCode != m_countryCode_langCode_fieldIdMandatory.end(); ++itCountryCode)
                                       {
@@ -1455,10 +1490,10 @@ void TemplateMergerFiller::fillExcelFiles(
                                                itLangCode != itCountryCode.value().end(); ++itLangCode)
                                           {
                                               //Q_ASSERT(itLangCode.value().contains("main_image_url")
-                                                       //|| itLangCode.value().contains("main_product_image_locator#1.media_location"));
-                                              itLangCode.value().subtract(notMandatoryFieldIds);
+                                              //|| itLangCode.value().contains("main_product_image_locator#1.media_location"));
+                                              itLangCode.value().subtract(notMandatoryFieldIdsCopy);
                                               //Q_ASSERT(itLangCode.value().contains("main_image_url")
-                                                       //|| itLangCode.value().contains("main_product_image_locator#1.media_location"));
+                                              //|| itLangCode.value().contains("main_product_image_locator#1.media_location"));
                                           }
                                       }
                                       delete mandatoryFieldIds;
@@ -1950,10 +1985,16 @@ void TemplateMergerFiller::_readInfoSources(const QStringList &sourceFilePaths)
                         {
                             if (!_isSkuParent(sku) || !m_countryCode_langCode_fieldIdChildOnly[countryCode][langCode].contains(fieldId))
                             {
-                                countryCode_langCode_fieldIds[countryCode][langCode].insert(fieldId);
-                                _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCode][langCode],
-                                                       fieldId,
-                                                       itFieldId_value.value());
+                                if (!fieldId.contains("parent_child")
+                                        && !fieldId.contains("parentage_level")
+                                        && !fieldId.contains("variation_theme")
+                                        && !fieldId.contains("parent_sku"))
+                                {
+                                    countryCode_langCode_fieldIds[countryCode][langCode].insert(fieldId);
+                                    _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCode][langCode],
+                                                           fieldId,
+                                                           itFieldId_value.value());
+                                }
                             }
                         }
                     }
@@ -2698,7 +2739,7 @@ void TemplateMergerFiller::_readValidValues(
         }
     }
 
-    //* // Comment when filling AUTO_SELECT_PATTERN_POSSIBLE_VALUES from the UE with DialogPossibleValues
+    //* // COMMENT when filling AUTO_SELECT_PATTERN_POSSIBLE_VALUES from the UE with DialogPossibleValues
     for (auto itFieldId = m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo].begin();
          itFieldId != m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo].end(); ++itFieldId)
     { // We alread fill the values we can deduct, like choice when one choice only, or country from china, to reduce the number of query that will be done by AI
