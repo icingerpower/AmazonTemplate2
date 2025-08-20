@@ -118,6 +118,7 @@ private:
                   bool isMainFile = false);
     void _setFilePathsToFill(const QString &keywordFilePath, const QStringList &toFillFilePaths);
     void _readInfoSources(const QStringList &sourceFilePaths);
+    void _checkMinimumValues(const QString &toFillFilePath);
     void _checkVarationsNotMissing();
     void _fillDataAutomatically();
     void _fillDataLeftChatGpt(

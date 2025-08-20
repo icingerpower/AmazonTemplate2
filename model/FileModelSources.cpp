@@ -4,7 +4,7 @@ FileModelSources::FileModelSources(const QString &dirPath, QObject *parent)
     : QFileSystemModel(parent)
 {
     setRootPath(dirPath);
-    setNameFilters(QStringList{"*SOURCES*.xlsm", "*SOURCES.xlsm", "*SOURCES*.xlsx", "*SOURCES.xlsx"});
+    setNameFilters(QStringList{"*SOURCE*.xlsm", "*SOURCE.xlsm", "*SOURCE*.xlsx", "*SOURCE.xlsx"});
     setNameFilterDisables(false);
 }
 

@@ -241,10 +241,7 @@ void TableInfoExtractor::generateImageNames(QString baseUrl)
         baseUrl += "/";
     }
     QStringList imageUrls;
-    QString lastColor;
-    QString lastSku;
     const auto &imageFileNames = _getImageFileNames();
-    QString imageName;
     int i=0;
     for (auto &imageFileName : imageFileNames)
     {

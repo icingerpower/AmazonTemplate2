@@ -630,11 +630,11 @@ void GptFiller::_askFillingDescBullets(
                 {
                     if (m_nDoneFailed > 0)
                     {
-                        callbackFinishedSuccess();
+                        callbackFinishedFailure("Text: " + m_lastError);
                     }
                     else
                     {
-                        callbackFinishedFailure("Text: " + m_lastError);
+                        callbackFinishedSuccess();
                     }
                 }
             }
@@ -727,7 +727,7 @@ void GptFiller::askFillingSelectsAndTexts(
                                                 jsonPossibleValues << possibleValue;
                                             }
                                             Q_ASSERT(jsonPossibleValues.size() > 1);
-                                            Q_ASSERT(jsonPossibleValues.size() < 30); // Implement a rule with TemplateMergerFiller::AUTO_SELECT_PATTERN_POSSIBLE_VALUES
+                                            Q_ASSERT(jsonPossibleValues.size() < 40); // Implement a rule with TemplateMergerFiller::AUTO_SELECT_PATTERN_POSSIBLE_VALUES
                                             JsonSourceInfos &jsonSourceInfos = skuParent_color_countryCode_langCode_fieldId_jsonSourceSelect[skuParent][colorFinal][countryCodeTo][langCodeTo][fieldId];
                                             jsonSourceInfos.countryCodesTo << countryCodeTo;
                                             jsonSourceInfos.langCodesTo << langCodeTo;
@@ -861,7 +861,7 @@ void GptFiller::_askFillingSelects(
                             const auto &aiDescription = m_jsonReplyAiDescription->get_description_ai(skuParent, (*m_sku_infos)[skuFirst].colorOrig);
                             Q_ASSERT(!aiDescription.isEmpty());
                             question = JsonReplySelect::PROMPT.arg
-                                    (aiDescription, customInstructions, jsonSource);
+                                    (aiDescription, customInstructions, fieldId, jsonSource);
                         }
                         ++m_nQueries;
                         qDebug().noquote() << "\nQUESTION GptFiller::_askFillingSelects SELECTS:" << fieldId << "-" << question;
