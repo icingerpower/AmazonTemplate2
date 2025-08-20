@@ -51,10 +51,12 @@ const QHash<QString, QString> TemplateMergerFiller::SHEETS_MANDATORY{
 };
 
 TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_PRICE
-    = [](const QString &countryFrom,
+    = [](const QString &,
+         const QString &countryFrom,
          const QString &countryTo,
          const QString &,
          const QHash<QString, QHash<QString, QString>> &,
+         const QHash<QString, QHash<QString, QHash<QString, QString>>> &,
          Gender,
          Age,
          const QVariant &origValue) -> QVariant{
@@ -93,44 +95,89 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_PRICE
 };
 
 TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_PUT_KEYWORDS
-    = [](const QString &,
-         const QString &countryTo,
-         const QString &langTo,
-         const QHash<QString, QHash<QString, QString>> &countryCode_langCode_keywords,
-         Gender,
-         Age,
-         const QVariant &origValue) -> QVariant{
-    if (!countryCode_langCode_keywords.contains(countryTo)
-        || !countryCode_langCode_keywords[countryTo].contains(langTo))
+= [](const QString &sku,
+        const QString &,
+        const QString &countryTo,
+        const QString &langTo,
+        const QHash<QString, QHash<QString, QString>> &countryCode_langCode_keywords,
+        const QHash<QString, QHash<QString, QHash<QString, QString>>> &skuPattern_countryCode_langCode_keywords,
+        Gender,
+        Age,
+        const QVariant &origValue) -> QVariant{
+    bool found = false;
+    for (auto itSkuPattern = skuPattern_countryCode_langCode_keywords.begin();
+         itSkuPattern != skuPattern_countryCode_langCode_keywords.end(); ++itSkuPattern)
     {
-        ExceptionTemplateError exception;
-        exception.setInfos(QObject::tr("Uncomplete keywords file"),
-                           QObject::tr("The keywords.txt file need to be complete for all countries inluding country: %1 lang: %2")
-                               .arg(countryTo, langTo));
-        exception.raise();
-    }
-    const auto &keywords = countryCode_langCode_keywords[countryTo][langTo];
-    static const QSet<QString> enCountries{"COM", "AU", "UK", "CA"};
-    if (!enCountries.contains(countryTo) && keywords.size() < 200
-        && countryCode_langCode_keywords.contains("UK")
-        && countryCode_langCode_keywords["UK"].contains("EN"))
-    {
-        const auto &keywordsSplited = keywords.split(" ");
-        QSet<QString> mergedKeywords{keywordsSplited.begin(), keywordsSplited.end()};
-        int curSize = keywords.size();
-        const auto &keywordsSplitedUk = countryCode_langCode_keywords["UK"]["EN"].split(" ");
-        for (const auto &enKeyword : keywordsSplitedUk)
+        const auto &skuPattern = itSkuPattern.key();
+        if (sku.contains(skuPattern))
         {
-            if (curSize + enKeyword.size() > 235)
+            found = true;
+            if (!itSkuPattern.value().contains(countryTo)
+                    || !itSkuPattern.value()[countryTo].contains(langTo))
             {
-                break;
+                ExceptionTemplateError exception;
+                exception.setInfos(QObject::tr("Uncomplete keywords file"),
+                                   QObject::tr("The keywords.txt file need to be complete for all countries inluding country: %1 lang: %2")
+                                   .arg(countryTo, langTo));
+                exception.raise();
             }
-            mergedKeywords.insert(enKeyword);
-            curSize += enKeyword.size();
         }
-        QStringList mergedKeywordsSorted{mergedKeywords.begin(), mergedKeywords.end()};
-        std::sort(mergedKeywordsSorted.begin(), mergedKeywordsSorted.end());
-        return mergedKeywordsSorted.join(" ");
+    }
+
+    if (!found)
+    {
+        if (!countryCode_langCode_keywords.contains(countryTo)
+                && !countryCode_langCode_keywords[countryTo].contains(langTo))
+        {
+            ExceptionTemplateError exception;
+            exception.setInfos(QObject::tr("Uncomplete keywords file"),
+                               QObject::tr("The keywords.txt file need to be complete for all countries inluding country: %1 lang: %2")
+                               .arg(countryTo, langTo));
+            exception.raise();
+        }
+    }
+    auto addEnglishKeywords = [countryTo](
+            const QHash<QString, QHash<QString, QString>> &countryCode_langCode_keywords
+            , const QString &keywords) -> QString {
+        static const QSet<QString> enCountries{"COM", "AU", "UK", "CA"};
+        if (!enCountries.contains(countryTo) && keywords.size() < 200
+                && countryCode_langCode_keywords.contains("UK")
+                && countryCode_langCode_keywords["UK"].contains("EN"))
+        {
+            const auto &keywordsSplited = keywords.split(" ");
+            QSet<QString> mergedKeywords{keywordsSplited.begin(), keywordsSplited.end()};
+            int curSize = keywords.size();
+            const auto &keywordsSplitedUk = countryCode_langCode_keywords["UK"]["EN"].split(" ");
+            for (const auto &enKeyword : keywordsSplitedUk)
+            {
+                if (curSize + enKeyword.size() > 235)
+                {
+                    break;
+                }
+                mergedKeywords.insert(enKeyword);
+                curSize += enKeyword.size();
+            }
+            QStringList mergedKeywordsSorted{mergedKeywords.begin(), mergedKeywords.end()};
+            std::sort(mergedKeywordsSorted.begin(), mergedKeywordsSorted.end());
+            return mergedKeywordsSorted.join(" ");
+        }
+        return keywords;
+    };
+
+    QString keywords;
+    for (auto it = skuPattern_countryCode_langCode_keywords.begin();
+         it != skuPattern_countryCode_langCode_keywords.end(); ++it)
+    {
+        if (sku.contains(it.key()))
+        {
+            keywords = addEnglishKeywords(it.value(), it.value()[countryTo][langTo]);
+            break;
+        }
+    }
+    if (keywords.isEmpty())
+    {
+        keywords = countryCode_langCode_keywords[countryTo][langTo];
+        keywords = addEnglishKeywords(countryCode_langCode_keywords, keywords);
     }
     return keywords;
 };
@@ -139,7 +186,9 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_COPY
     = [](const QString &,
          const QString &,
          const QString &,
+         const QString &,
          const QHash<QString, QHash<QString, QString>> &,
+         const QHash<QString, QHash<QString, QHash<QString, QString>>> &,
          Gender,
          Age,
          const QVariant &origValue) -> QVariant{
@@ -147,10 +196,12 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_COPY
 };
 
 TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_CLOTHE_SIZE
-    = [](const QString &countryFrom,
+    = [](const QString &,
+        const QString &countryFrom,
          const QString &countryTo,
          const QString &langTo,
          const QHash<QString, QHash<QString, QString>> &,
+         const QHash<QString, QHash<QString, QHash<QString, QString>>> &,
          Gender targetGender,
          Age age_range_description,
          const QVariant &origValue) -> QVariant{
@@ -280,10 +331,12 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_CLOTH
 };
 
 TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_SHOE_SIZE
-    = [](const QString &countryFrom,
+    = [](const QString &,
+        const QString &countryFrom,
          const QString &countryTo,
          const QString &,
          const QHash<QString, QHash<QString, QString>> &,
+         const QHash<QString, QHash<QString, QHash<QString, QString>>> &,
          Gender targetGender,
          Age age_range_description,
          const QVariant &origValue) -> QVariant{
@@ -527,7 +580,7 @@ const QHash<QString, QSet<QString>> TemplateMergerFiller::PRODUCT_TYPE_FIELD_IDS
     QHash<QString, QSet<QString>> productType_extraFieldIds;
     QSet<QString> clotheFieldIds{
         "special_size_type", "special_size_type#1.value"
-        , "outer_material_type", "outer#1.material#1.value"
+        , "outer_material_type1", "outer_material_type", "outer#1.material#1.value"
         , "item_length_description", "item_length_description#1.value"
         //, "occasion_type", "occasion_type#1.value"
     };
@@ -561,6 +614,11 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_PATTERN_REMOVE_AS_MANDATORY{
     , "quantity", "fulfillment_availability#1.quantity"
     , "merchant_shipping_group#1.value"
     , "hazmat#1.aspect"
+    , "footwear_size_unisex"
+    , "footwear_to_size_unisex"
+    , "footwear_width_unisex"
+    , "footwear_gender_unisex"
+    , "height_map"
 };
 
 const QSet<QString> TemplateMergerFiller::FIELD_IDS_ALWAY_SAME_VALUE{
@@ -694,6 +752,8 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "apparel_size#1.body_type"
     , "apparel_height_type"
     , "apparel_size#1.height_type"
+    , "leather_type"
+    , "sole_material"
     , "size_map"
     , "size_name"
     , "size#1.value"
@@ -781,6 +841,7 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "external_product_type"
     , "amzn1.volt.ca.product_id_type"
     , "outer_material_type", "outer#1.material#1.value"
+    , "outer_material_type1"
     , "relationship_type", "child_parent_sku_relationship#1.child_relationship_type"
     , "manufacturer", "manufacturer#1.value"
     , "parent_sku", "child_parent_sku_relationship#1.parent_sku"
@@ -802,6 +863,53 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
 = []() -> QMultiHash<QString, QSet<QString>>
 {
     QMultiHash<QString, QSet<QString>> pattern_possibleValues;
+
+    pattern_possibleValues.insert(
+                "age_range_description",
+                QSet<QString>{
+                    "Adulte"
+                    , "Adult"
+                    , "Adult"
+                    , "Yetişkin"
+                    , "Adulto"
+                    , "Erwachsener"
+                    , "Volwassene"
+                    , "Adulte"
+                    , "Adult"
+                    , "Adulte"
+                    , "Volwassene"
+                    , "Vuxen"
+                    , "Adulto"
+                    , "Dla dorosłych"  // PL-pl
+                }
+                );
+    pattern_possibleValues.insert(
+                "batteries_required",
+                QSet<QString>{
+                    "No"
+                    , "Non"
+                    , "Nee"
+                    , "Nej"
+                    , "Yok hayır"
+                    , "Nein"   // DE-de
+                    , "Nie"    // PL-pl
+                });
+
+
+    pattern_possibleValues.insert(
+                "body_type",
+                QSet<QString>{
+                    "Taille normale" // CA-fr, BE-fr; FR-fr: suggested (≈10% wrong)
+                    , "Regular" // CA-en, IE-en, COM-en, NL-nl, DE-de, ES-es, BE-nl
+                    , "Regelbunden" // SE-se
+                    , "Standart" // TR-tr: suggested (≈30% wrong)
+                    , "Taglia normale" // IT-it: suggested (≈15% wrong)
+                    , "Regularny" // PL-pl
+                }
+                );
+
+
+
     pattern_possibleValues.insert(
                 "country_of_origin",
                 QSet<QString>{
@@ -817,62 +925,24 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     "中国"      // JP - Japanese
                 });
     pattern_possibleValues.insert(
-                "variation_theme",
+                "height_type",
                 QSet<QString>{
-                    "SizeColor"
-                    //, "Size"
-                    , "color-size"
-                    , "STORLEK/FÄRG"
-                    , "TAILLE/COULEUR"
-                    , "MAAT/KLEUR"
-                    , "SIZE/COLOR"
-                    , "sizecolor"
-                    , "ÖLÇÜ/RENK"
-                    , "SIZE/COLOUR"      // UK-en
-                    , "GRÖSSE/FARBE"     // DE-de
-                    , "ROZMIAR/KOLOR"    // PL-pl
-                    , "FORMATO/COLORE"   // IT-it
-                    , "TAMAÑO/COLOR"     // MX-es
-                });
-
-    for (const auto &key : {"update_delete"
-         , "::record_action"})
-    {
-        pattern_possibleValues.insert(
-                    key,
-                    QSet<QString>{
-                        "Aanmaken of vervangen (volledige update)"
-                        , "Skapa eller ersätt (fullständig uppdatering)"
-                        , "Create or Replace (Full Update)"
-                        , "Erstellen oder Ersetzen (Vollständige Aktualisierung)"
-                        , "Actualisation"
-                        , "Update"
-                        , "Mise à jour complète"
-                        , "Aktualisierung"
-                        , "Aggiorna"
-                        , "Actualización"
-                        , "Uppdatera"
-                        , "Bijwerken"
-                        , "update"
-                        , "Oluştur veya Değiştir (Tam Güncelleme)"
-                        , "Créez ou remplacez (mise à jour complète)"
-                        , "Utwórz lub zastąp (pełna aktualizacja)"       // PL-pl
-                        , "Crea o sostituisci (aggiornamento completo)"  // IT-it
-                        , "Créer ou remplacer (mise à jour complète)"    // CA-fr
-                        , "Crear o reemplazar (actualización completa)"  // MX-es
-                    });
-    }
-    pattern_possibleValues.insert(
-                "batteries_required",
-                QSet<QString>{
-                    "No"
-                    , "Non"
-                    , "Nee"
-                    , "Nej"
-                    , "Yok hayır"
-                    , "Nein"   // DE-de
-                    , "Nie"    // PL-pl
-                });
+                    "Regular" // IE-en
+                    , "Standart" // TR-tr: suggested (≈30% wrong)
+                    , "Regular" // COM-en
+                    , "Regular" // CA-en
+                    , "Taille normale" // CA-fr
+                    , "Regular" // DE-de
+                    , "Regular" // BE-nl
+                    , "Taille normale" // BE-fr
+                    , "Regolare" // IT-it: suggested (≈20% wrong)
+                    , "Regelbunden" // SE-se
+                    , "Regular" // NL-nl
+                    , "Taille normale" // FR-fr: suggested (≈10% wrong)
+                    , "Regular" // ES-es
+                    , "Regularny" // PL-pl
+                }
+                );
     for (const auto &key : {"parentage_level#1.value", "parent_child"})
     {
         pattern_possibleValues.insert(
@@ -903,6 +973,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Bovenliggend"
                         , "Förälder"
                         , "Lverordnad"
+                        , "Nadrzędny"
                         , "Eltern"           // DE-de
                         , "Rodzic"           // PL-pl
                         , "Articolo parent"  // IT-it
@@ -910,55 +981,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "parent"           // BE-nl / BE-fr (lowercase)
                     });
     }
-    pattern_possibleValues.insert(
-                "age_range_description",
-                QSet<QString>{
-                    "Adulte"
-                    , "Adult"
-                    , "Adult"
-                    , "Yetişkin"
-                    , "Adulto"
-                    , "Erwachsener"
-                    , "Volwassene"
-                    , "Adulte"
-                    , "Adult"
-                    , "Adulte"
-                    , "Volwassene"
-                    , "Vuxen"
-                    , "Adulto"
-                    , "Dla dorosłych"  // PL-pl
-                }
-                );
-    pattern_possibleValues.insert(
-                "body_type",
-                QSet<QString>{
-                    "Taille normale" // CA-fr, BE-fr; FR-fr: suggested (≈10% wrong)
-                    , "Regular" // CA-en, IE-en, COM-en, NL-nl, DE-de, ES-es, BE-nl
-                    , "Regelbunden" // SE-se
-                    , "Standart" // TR-tr: suggested (≈30% wrong)
-                    , "Taglia normale" // IT-it: suggested (≈15% wrong)
-                    , "Regularny" // PL-pl
-                }
-                );
-    pattern_possibleValues.insert(
-                "height_type",
-                QSet<QString>{
-                    "Regular" // IE-en
-                    , "Standart" // TR-tr: suggested (≈30% wrong)
-                    , "Regular" // COM-en
-                    , "Regular" // CA-en
-                    , "Taille normale" // CA-fr
-                    , "Regular" // DE-de
-                    , "Regular" // BE-nl
-                    , "Taille normale" // BE-fr
-                    , "Regolare" // IT-it: suggested (≈20% wrong)
-                    , "Regelbunden" // SE-se
-                    , "Regular" // NL-nl
-                    , "Taille normale" // FR-fr: suggested (≈10% wrong)
-                    , "Regular" // ES-es
-                    , "Regularny" // PL-pl
-                }
-                );
+
     pattern_possibleValues.insert(
                 "size_class",
                 QSet<QString>{
@@ -997,32 +1020,85 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                 );
 
     pattern_possibleValues.insert(
-      "supplier_declared_dg_hz_regulation1",
-      QSet<QString>{
-        "Not Applicable",       // IT-it, FR-fr, CA-en, IE-en, COM-en, ES-es, DE-de
-        "Ej tillämpbar",        // SE-se
-        "Non applicable",       // CA-fr, BE-fr
-        "Uygun Değil",          // TR-tr
-        "Niet van toepassing"   // NL-nl, BE-nl
-      }
-    );
+                "supplier_declared_dg_hz_regulation1",
+                QSet<QString>{
+                    "N/A",
+                    "Inte tillämplig",
+                    "Not Applicable",       // IT-it, FR-fr, CA-en, IE-en, COM-en, ES-es, DE-de
+                    "Ej tillämpbar",        // SE-se
+                    "Non applicable",       // CA-fr, BE-fr
+                    "Uygun Değil",          // TR-tr
+                    "Niet van toepassing"   // NL-nl, BE-nl
+                }
+                );
 
     pattern_possibleValues.insert(
-      "supplier_declared_material_regulation1",
-      QSet<QString>{
-        "Non applicabile",     // IT-it
-        "Ej tillämpbar",       // SE-se — suggested (no list); ~60% confidence
-        "Non applicable",      // FR-fr, CA-fr (+ BE-fr — suggested; ~80%)
-        "Not Applicable",      // CA-en, COM-en (+ IE-en — suggested; ~90%)
-        "Uygulanamaz",         // TR-tr — suggested (no list); ~70%
-        "Nicht zutreffend",    // DE-de, NL-nl
-        "Niet van toepassing", // BE-nl — suggested (no list); ~70%
-        "No aplicable"         // ES-es
-      }
-    );
+                "supplier_declared_material_regulation1",
+                QSet<QString>{
+                    "Non applicabile",     // IT-it
+                    "Ej tillämpbar",       // SE-se — suggested (no list); ~60% confidence
+                    "Non applicable",      // FR-fr, CA-fr (+ BE-fr — suggested; ~80%)
+                    "Not Applicable",      // CA-en, COM-en (+ IE-en — suggested; ~90%)
+                    "Uygulanamaz",         // TR-tr — suggested (no list); ~70%
+                    "Nicht zutreffend",    // DE-de, NL-nl
+                    "Niet van toepassing", // BE-nl — suggested (no list); ~70%
+                    "No aplicable"         // ES-es
+                }
+                );
+    for (const auto &key : {"update_delete"
+         , "::record_action"})
+    {
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "Aanmaken of vervangen (volledige update)"
+                        , "Skapa eller ersätt (fullständig uppdatering)"
+                        , "Create or Replace (Full Update)"
+                        , "Erstellen oder Ersetzen (Vollständige Aktualisierung)"
+                        , "Actualisation"
+                        , "Update"
+                        , "Mise à jour complète"
+                        , "Aktualisierung"
+                        , "Aggiorna"
+                        , "Actualización"
+                        , "Uppdatera"
+                        , "Bijwerken"
+                        , "update"
+                        , "Aktualizuj"
+                        , "Oluştur veya Değiştir (Tam Güncelleme)"
+                        , "Créez ou remplacez (mise à jour complète)"
+                        , "Utwórz lub zastąp (pełna aktualizacja)"       // PL-pl
+                        , "Crea o sostituisci (aggiornamento completo)"  // IT-it
+                        , "Créer ou remplacer (mise à jour complète)"    // CA-fr
+                        , "Crear o reemplazar (actualización completa)"  // MX-es
+                    });
+    }
+
+    pattern_possibleValues.insert(
+                "variation_theme",
+                QSet<QString>{
+                    "SizeColor"
+                    //, "Size"
+                    , "color-size"
+                    , "STORLEK/FÄRG"
+                    , "TAILLE/COULEUR"
+                    , "MAAT/KLEUR"
+                    , "SIZE/COLOR"
+                    , "sizecolor"
+                    , "ÖLÇÜ/RENK"
+                    , "SIZE/COLOUR"      // UK-en
+                    , "GRÖSSE/FARBE"     // DE-de
+                    , "ROZMIAR/KOLOR"    // PL-pl
+                    , "FORMATO/COLORE"   // IT-it
+                    , "TAMAÑO/COLOR"     // MX-es
+                    , "Nazwa rozmiaru-Nazwa koloru"
+                    , "KolorRozmiaru"
+                });
+
+
 
     //supplier_declared_material_regulation1
-            //supplier_declared_dg_hz_regulation1
+    //supplier_declared_dg_hz_regulation1
     return pattern_possibleValues;
 }();
 
@@ -1035,6 +1111,8 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"::title", "::title"} // Include also the brand in the begin
         , {"::listing_status", "::listing_status"}
         , {"manufacturer", "manufacturer#1.value"}
+        , {"leather_type", "leather_type"}
+        , {"sole_material", "sole_material#1.value"}
         , {"collection_name", "collection#1.value"}
         , {"gpsr_safety_attestation", "gpsr_safety_attestation#1.value"}
         , {"offering_start_date", "purchasable_offer#1.start_at.value"}
@@ -1068,6 +1146,7 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"footwear_to_size", "footwear_size#1.to_size"}
         , {"footwear_size_class", "footwear_size#1.size_class"}
         , {"footwear_size_system", "footwear_size#1.size_system"}
+        , {"footwear_width", "footwear_size#1.width"}
         , {"shapewear_size", "shapewear_size#1.size"}
         , {"shapewear_size_to", "shapewear_size#1.size_to"}
         , {"shapewear_size_class", "shapewear_size#1.size_class"}
@@ -1124,6 +1203,7 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"fulfillment_center_id", "fulfillment_availability#1.fulfillment_channel_code"}
         , {"weave_type", "weave_type#1.value"}
         , {"outer_material_type", "outer#1.material#1.value"}
+        , {"outer_material_type1", "outer_material_type1"}
         , {"country_of_origin", "country_of_origin#1.value"}
         //, {"item_type", "item_type#1.value"}
         , {"item_type_name", "item_type_name#1.value"}
@@ -1305,6 +1385,13 @@ void TemplateMergerFiller::_recordValueAllVersion(
     if (fieldId.contains("list_price"))
     {
         for (const auto &id : {"list_price", "list_price_with_tax", "list_price#1.value_with_tax"})
+        {
+            fieldId_value[id] = value;
+        }
+    }
+    else if (fieldId.contains("outer") && fieldId.contains("material"))
+    {
+        for (const auto &id : {"outer_material_type", "outer_material_type1", "outer#1.material#1.value"})
         {
             fieldId_value[id] = value;
         }
@@ -1524,11 +1611,11 @@ void TemplateMergerFiller::clearPreviousChatgptReplies()
 
 
 void TemplateMergerFiller::_preFillExcelFiles(
-        const QString &keywordFilePath
+        const QStringList &keywordFilePaths
         , const QStringList &sourceFilePaths
         , const QStringList &toFillFilePaths)
 {
-    _setFilePathsToFill(keywordFilePath, toFillFilePaths);
+    _setFilePathsToFill(keywordFilePaths, toFillFilePaths);
     if (!sourceFilePaths.isEmpty())
     {
         _readInfoSources(sourceFilePaths);
@@ -1561,13 +1648,13 @@ const QHash<QString, QHash<QString, QHash<QString, QStringList>>>
 }
 
 void TemplateMergerFiller::preFillExcelFiles(
-        const QString &keywordFilePath
+        const QStringList &keywordFilePaths
         , const QStringList &sourceFilePaths
         , const QStringList &toFillFilePaths
         , std::function<void()> callBackFinishedSuccess
         , std::function<void(const QString &)> callbackFinishedFailure)
 {
-    _preFillExcelFiles(keywordFilePath, sourceFilePaths, toFillFilePaths);
+    _preFillExcelFiles(keywordFilePaths, sourceFilePaths, toFillFilePaths);
     QSet<QString> *mandatoryFieldIds = new QSet<QString>{getAllMandatoryFieldIds()};
     m_gptFiller->askTrueMandatory(m_productType,
                                   *mandatoryFieldIds,
@@ -1603,14 +1690,14 @@ void TemplateMergerFiller::preFillExcelFiles(
 }
 
 void TemplateMergerFiller::fillExcelFiles(
-    const QString &keywordFilePath
+    const QStringList &keywordFilePaths
     , const QStringList &sourceFilePaths
     , const QStringList &toFillFilePaths
     , std::function<void (int, int)> callBackProgress
     , std::function<void ()> callBackFinishedSuccess
     , std::function<void (const QString &)> callbackFinishedFailure)
 {
-    _preFillExcelFiles(keywordFilePath, sourceFilePaths, toFillFilePaths);
+    _preFillExcelFiles(keywordFilePaths, sourceFilePaths, toFillFilePaths);
     QSet<QString> *mandatoryFieldIds = new QSet<QString>{getAllMandatoryFieldIds()};
     m_gptFiller->askTrueMandatory(m_productType,
                                   *mandatoryFieldIds,
@@ -1650,14 +1737,14 @@ void TemplateMergerFiller::fillExcelFiles(
 }
 
 void TemplateMergerFiller::fillAiDescOnly(
-        const QString &keywordFilePath
+        const QStringList &keywordFilePaths
         , const QStringList &sourceFilePaths
         , const QStringList &toFillFilePaths
         , std::function<void (int, int)> callBackProgress
         , std::function<void ()> callBackFinishedSuccess
         , std::function<void (const QString &)> callbackFinishedFailure)
 {
-    _preFillExcelFiles(keywordFilePath, sourceFilePaths, toFillFilePaths);
+    _preFillExcelFiles(keywordFilePaths, sourceFilePaths, toFillFilePaths);
     QSet<QString> *mandatoryFieldIds = new QSet<QString>{getAllMandatoryFieldIds()};
     m_gptFiller->askTrueMandatory(m_productType,
                                   *mandatoryFieldIds,
@@ -2055,7 +2142,7 @@ void TemplateMergerFiller:: _readSkus(QXlsx::Document &document,
     //*/
 }
 
-void TemplateMergerFiller::_setFilePathsToFill(const QString &keywordFilePath,
+void TemplateMergerFiller::_setFilePathsToFill(const QStringList &keywordFilePaths,
                                               const QStringList &toFillFilePaths)
 {
     m_toFillFilePaths = toFillFilePaths;
@@ -2063,7 +2150,7 @@ void TemplateMergerFiller::_setFilePathsToFill(const QString &keywordFilePath,
     m_countryCode_langCode_fieldName_fieldId.clear();
     m_sku_countryCode_langCode_fieldId_origValue.clear();
     m_skus.clear();
-    _readKeywords(keywordFilePath);
+    _readKeywords(keywordFilePaths);
 
     const auto &countryCodeFrom = _getCountryCode(m_filePathFrom);
     const auto &langCodeFrom = _getLangCode(m_filePathFrom);
@@ -2479,10 +2566,12 @@ void TemplateMergerFiller::_fillDataAutomatically()
                             if (FIELD_IDS_FILLER_NO_SOURCES.contains(fieldId))
                             {
                                 const auto &filler = FIELD_IDS_FILLER_NO_SOURCES[fieldId];
-                                const auto &fillerValue = filler(countryCodeFrom,
+                                const auto &fillerValue = filler(sku,
+                                                                 countryCodeFrom,
                                                                  countryCodeTo,
                                                                  langCodeTo,
                                                                  m_countryCode_langCode_keywords,
+                                                                 m_skuPattern_countryCode_langCode_keywords,
                                                                  m_gender,
                                                                  m_age,
                                                                  origValue);
@@ -2506,10 +2595,12 @@ void TemplateMergerFiller::_fillDataAutomatically()
                                     if (origValue.isValid()
                                             || fieldId.contains("keywords"))
                                     {
-                                        const auto &fillerValue = filler(countryCodeFrom,
+                                        const auto &fillerValue = filler(sku,
+                                                                         countryCodeFrom,
                                                                          countryCodeTo,
                                                                          langCodeTo,
                                                                          m_countryCode_langCode_keywords,
+                                                                         m_skuPattern_countryCode_langCode_keywords,
                                                                          m_gender,
                                                                          m_age,
                                                                          origValue);
@@ -2581,10 +2672,12 @@ void TemplateMergerFiller::_fillDataAutomatically()
                                                 continue;
                                             }
                                             //const auto &filler = FIELD_IDS_FILLER_NO_SOURCES[otherFieldId];
-                                            const auto &fillerValue = filler(countryCodeFrom,
+                                            const auto &fillerValue = filler(sku,
+                                                                             countryCodeFrom,
                                                                              countryCodeTo,
                                                                              langCodeTo,
                                                                              m_countryCode_langCode_keywords,
+                                                                             m_skuPattern_countryCode_langCode_keywords,
                                                                              m_gender,
                                                                              m_age,
                                                                              origValue);
@@ -2840,33 +2933,48 @@ void TemplateMergerFiller::_createToFillXlsx()
     }
 }
 
-void TemplateMergerFiller::_readKeywords(const QString &filePath)
+void TemplateMergerFiller::_readKeywords(const QStringList &filePaths)
 {
-    QFile file{filePath};
-    if (file.open(QFile::ReadOnly))
+    for (const auto &filePath : filePaths)
     {
-        QTextStream stream{&file};
-        auto lines = stream.readAll().split("\n");
-        for (int i=0; i<lines.size(); ++i)
+        auto patterns = QFileInfo{filePath}.baseName().split("__");
+        patterns.takeFirst();
+        QFile file{filePath};
+        if (file.open(QFile::ReadOnly))
         {
-            if (lines[i].startsWith("[") && lines[i].endsWith("]") && i+1<lines.size())
+            QTextStream stream{&file};
+            auto lines = stream.readAll().split("\n");
+            file.close();
+            for (int i=0; i<lines.size(); ++i)
             {
-                const auto &countryLangCode = lines[i].mid(1, lines[i].size()-2);
-                QString langCode = _getLangCodeFromText(countryLangCode);
-                QString countryCode;
-                if (countryLangCode.contains("_"))
+                if (lines[i].startsWith("[") && lines[i].endsWith("]") && i+1<lines.size())
                 {
-                    const auto &elements = countryLangCode.split("_");
-                    countryCode = elements[1].toUpper();
+                    const auto &countryLangCode = lines[i].mid(1, lines[i].size()-2);
+                    QString langCode = _getLangCodeFromText(countryLangCode);
+                    QString countryCode;
+                    if (countryLangCode.contains("_"))
+                    {
+                        const auto &elements = countryLangCode.split("_");
+                        countryCode = elements[1].toUpper();
+                    }
+                    else
+                    {
+                        countryCode = countryLangCode;
+                    }
+                    if (patterns.isEmpty())
+                    {
+                        m_countryCode_langCode_keywords[countryCode][langCode] = lines[i+1];
+                    }
+                    else
+                    {
+                        for (const auto &pattern : patterns)
+                        {
+                            m_skuPattern_countryCode_langCode_keywords[pattern][countryCode][langCode] = lines[i+1];
+                        }
+                    }
                 }
-                else
-                {
-                    countryCode = countryLangCode;
-                }
-                m_countryCode_langCode_keywords[countryCode][langCode] = lines[i+1];
             }
         }
-        file.close();
     }
 }
 
@@ -3052,6 +3160,7 @@ void TemplateMergerFiller::_readValidValues(
         }
     }
 
+    QHash<QString, QHash<QString, QHash<QString, QStringList>>> countryCode_langCode_fieldId_possibleValues;
     //* // COMMENT when filling AUTO_SELECT_PATTERN_POSSIBLE_VALUES from the UE with DialogPossibleValues
     for (auto itFieldId = m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo].begin();
          itFieldId != m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo].end(); ++itFieldId)
@@ -3115,11 +3224,41 @@ void TemplateMergerFiller::_readValidValues(
                                 found = true; // not needed/Chield
                             }
                         }
-                        Q_ASSERT(found); // Check fromValue / possibleValues and fieldId
+                        if (!found)
+                        {
+                            countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo][fieldId] = possibleValues;
+                        }
+                        //Q_ASSERT(found); // Check fromValue / possibleValues and fieldId
                     }
                 }
             }
         }
+    }
+    if (countryCode_langCode_fieldId_possibleValues.size() > 0)
+    {
+        QStringList errors;
+        for (auto itCountry = countryCode_langCode_fieldId_possibleValues.begin();
+             itCountry != countryCode_langCode_fieldId_possibleValues.end(); ++itCountry)
+        {
+            const auto &countryCode = itCountry.key();
+            for (auto itLangCode = itCountry.value().begin();
+                 itLangCode != itCountry.value().end(); ++itLangCode)
+            {
+                const auto &langcode = itLangCode.key();
+                for (auto itFieldId = itLangCode.value().begin();
+                     itFieldId != itLangCode.value().end(); ++itFieldId)
+                {
+                    const auto &fieldId = itFieldId.key();
+                    const auto &possibleValues = itFieldId.value();
+                    //std::sort(possibleValues.begin(), possibleValues.end());
+                    errors << countryCode + " - " + langcode + " - " + fieldId + " : " + possibleValues.join(", ");
+                }
+            }
+        }
+        ExceptionTemplateError exception;
+        exception.setInfos("Missing auto attributes",
+                           errors.join("\n"));
+        exception.raise();
     }
     //*/
 }

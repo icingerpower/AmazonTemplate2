@@ -51,10 +51,12 @@ public:
         UndefinedAge
     };
 
-    typedef std::function<QVariant(const QString &countryFrom,
+    typedef std::function<QVariant(const QString &sku,
+                                   const QString &countryFrom,
                                    const QString &countryTo,
                                    const QString &langTo,
                                    const QHash<QString, QHash<QString, QString>> &countryCode_langCode_keywords,
+                                   const QHash<QString, QHash<QString, QHash<QString, QString>>> &skuPattern_countryCode_langCode_keywords,
                                    Gender targetGender,
                                    Age age_range_description,
                                    const QVariant &origValue)> FuncFiller;
@@ -73,20 +75,20 @@ public:
             std::function<void(QString &logMessage)> callBackLog);
     ~TemplateMergerFiller();
     void clearPreviousChatgptReplies();
-    void preFillExcelFiles(const QString &keywordFilePath
+    void preFillExcelFiles(const QStringList &keywordFilePaths
                         , const QStringList &sourceFilePaths
                         , const QStringList &toFillFilePaths
                         , std::function<void()> callBackFinishedSuccess
                         , std::function<void(const QString &)> callbackFinishedFailure
                         );
-    void fillExcelFiles(const QString &keywordFilePath
+    void fillExcelFiles(const QStringList &keywordFilePaths
                         , const QStringList &sourceFilePaths
                         , const QStringList &toFillFilePaths
                         , std::function<void(int, int)> callBackProgress
                         , std::function<void()> callBackFinishedSuccess
                         , std::function<void(const QString &)> callbackFinishedFailure
                         );
-    void fillAiDescOnly(const QString &keywordFilePath
+    void fillAiDescOnly(const QStringList &keywordFilePaths
                         , const QStringList &sourceFilePaths
                         , const QStringList &toFillFilePaths
                         , std::function<void(int, int)> callBackProgress
@@ -116,7 +118,7 @@ private:
                   QHash<QString, SkuInfo> &sku_infos,
                   QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> &sku_countryCode_langCode_fieldId_origValue,
                   bool isMainFile = false);
-    void _setFilePathsToFill(const QString &keywordFilePath, const QStringList &toFillFilePaths);
+    void _setFilePathsToFill(const QStringList &keywordFilePaths, const QStringList &toFillFilePaths);
     void _readInfoSources(const QStringList &sourceFilePaths);
     void _checkMinimumValues(const QString &toFillFilePath);
     void _checkVarationsNotMissing();
@@ -134,7 +136,7 @@ private:
     void _fixAlwaysSameValue();
     void _createToFillXlsx();
 
-    void _readKeywords(const QString &filePath);
+    void _readKeywords(const QStringList &filePaths);
     QString _getCountryCode(const QString &templateFilePath) const;
     QString _getLangCode(const QString &templateFilePath) const;
     QString _getLangCodeFromText(const QString &text) const;
@@ -160,7 +162,7 @@ private:
     void _recordValueAllVersion(QHash<QString, QVariant> &fieldId_value,
                                 const QString fieldId,
                                 const QVariant &value);
-    void _preFillExcelFiles(const QString &keywordFilePath
+    void _preFillExcelFiles(const QStringList &keywordFilePaths
                             , const QStringList &sourceFilePaths
                             , const QStringList &toFillFilePaths);
     QString _getCustomInstructions(const QString &sku) const;
@@ -171,6 +173,7 @@ private:
     QDir m_workdingDirImages;
     QHash<QString, QSet<QString>> m_countryCode_sourceSkus;
     QHash<QString, QHash<QString, QString>> m_countryCode_langCode_keywords;
+    QHash<QString, QHash<QString, QHash<QString, QString>>> m_skuPattern_countryCode_langCode_keywords;
 
     QHash<QString, QHash<QString, QHash<QString, QString>>> m_countryCode_langCode_fieldName_fieldId;
     QHash<QString, QHash<QString, QSet<QString>>> m_countryCode_langCode_fieldIdMandatory;

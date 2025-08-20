@@ -218,10 +218,14 @@ void MainWindow::generate()
         }
         else
         {
-            const auto &keywordFilePath = keywordsFileInfos.last().absoluteFilePath();
+            QStringList keywordFilePaths;
+            for (const auto &keywordFileInfo : keywordsFileInfos)
+            {
+                keywordFilePaths << keywordFileInfo.absoluteFilePath();
+            }
             ui->progressBar->setVisible(true);
             m_templateMergerFiller->fillExcelFiles(
-                keywordFilePath,
+                keywordFilePaths,
                 getFileModelSources()->getFilePaths()
                 , getFileModelToFill()->getFilePaths()
                 , [this](int progress, int max){
@@ -271,10 +275,14 @@ void MainWindow::generateAiDescOnly()
         }
         else
         {
-            const auto &keywordFilePath = keywordsFileInfos.last().absoluteFilePath();
+            QStringList keywordFilePaths;
+            for (const auto &keywordFileInfo : keywordsFileInfos)
+            {
+                keywordFilePaths << keywordFileInfo.absoluteFilePath();
+            }
             ui->progressBar->setVisible(true);
             m_templateMergerFiller->fillAiDescOnly(
-                keywordFilePath,
+                keywordFilePaths,
                 getFileModelSources()->getFilePaths()
                 , getFileModelToFill()->getFilePaths()
                 , [this](int progress, int max){
@@ -341,10 +349,14 @@ void MainWindow::runPromptsManually()
         }
         else
         {
-            const auto &keywordFilePath = keywordsFileInfos.last().absoluteFilePath();
+            QStringList keywordFilePaths;
+            for (const auto &keywordFileInfo : keywordsFileInfos)
+            {
+                keywordFilePaths << keywordFileInfo.absoluteFilePath();
+            }
 
             m_templateMergerFiller->preFillExcelFiles(
-                        keywordFilePath,
+                        keywordFilePaths,
                         getFileModelSources()->getFilePaths()
                         , getFileModelToFill()->getFilePaths()
                         , [this](){
@@ -389,10 +401,14 @@ void MainWindow::reviewAiDesc()
         }
         else
         {
-            const auto &keywordFilePath = keywordsFileInfos.last().absoluteFilePath();
+            QStringList keywordFilePaths;
+            for (const auto &keywordFileInfo : keywordsFileInfos)
+            {
+                keywordFilePaths << keywordFileInfo.absoluteFilePath();
+            }
 
             m_templateMergerFiller->preFillExcelFiles(
-                        keywordFilePath,
+                        keywordFilePaths,
                         getFileModelSources()->getFilePaths()
                         , getFileModelToFill()->getFilePaths()
                         , [this](){
@@ -455,10 +471,14 @@ void MainWindow::displayPossibleValues()
         }
         else
         {
-            const auto &keywordFilePath = keywordsFileInfos.last().absoluteFilePath();
+            QStringList keywordFilePaths;
+            for (const auto &keywordFileInfo : keywordsFileInfos)
+            {
+                keywordFilePaths << keywordFileInfo.absoluteFilePath();
+            }
 
             m_templateMergerFiller->preFillExcelFiles(
-                        keywordFilePath,
+                        keywordFilePaths,
                         getFileModelSources()->getFilePaths()
                         , getFileModelToFill()->getFilePaths()
                         , [this](){
