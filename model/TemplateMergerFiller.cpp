@@ -503,11 +503,14 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_NOT_AI{
     , "model"
     , "model_name#1.value"
     , "model_name"
+    , "model_number#1.value"
     , "parent_child", "parentage_level#1.value"
     , "apparel_size_to"
     , "apparel_size#1.size_to"
-    , "apparel_size"
-    , "apparel_size#1.size"
+    , "footwear_size"
+    , "footwear_size#1.size"
+    , "footwear_to_size"
+    , "footwear_size#1.to_size"
     , "generic_keyword"
     , "generic_keyword#1.value"
     /*
@@ -540,6 +543,7 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_PUT_FIRST_VALUE{
 
 const QSet<QString> TemplateMergerFiller::FIELD_IDS_EXTRA_MANDATORY{
     "color_name", "color#1.value"
+    , "country_of_origin", "country_of_origin#1.value"
     , "batteries_required" , "batteries_required#1.value"
     , "supplier_declared_dg_hz_regulation1", "supplier_declared_dg_hz_regulation#1.value"
     , "supplier_declared_material_regulation1", "supplier_declared_material_regulation1#1.value"
@@ -563,16 +567,20 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_EXTRA_MANDATORY{
     , "shapewear_body_type", "footwear_size#1.body_type"
     , "shapewear_height_type", "footwear_size#1.height_type"
     , "model_name", "model_name#1.value"
+    , "model", "model_number#1.value"
     , "condition_type", "condition_type#1.value"
     , "item_type_name", "item_type_name#1.value"
     , "weave_type", "weave_type#1.value"
     , "care_instructions", "care_instructions#1.value"
     , "relationship_type", "child_parent_sku_relationship#1.child_relationship_type"
     , "variation_theme", "variation_theme#1.name"
-    , "style", "style#1.value"
     , "main_image_url", "main_product_image_locator#1.media_location"
     , "parent_child", "parentage_level#1.value"
     , "update_delete", "::record_action"
+    , "recommended_browse_nodes", "recommended_browse_nodes#1.value"
+    , "style_name", "style#1.value"
+    , "color_map", "color#1.standardized_values#1"
+    , "lifecycle_supply_type"
 };
 
 const QHash<QString, QSet<QString>> TemplateMergerFiller::PRODUCT_TYPE_FIELD_IDS_EXTRA_MANDATORY
@@ -582,10 +590,53 @@ const QHash<QString, QSet<QString>> TemplateMergerFiller::PRODUCT_TYPE_FIELD_IDS
         "special_size_type", "special_size_type#1.value"
         , "outer_material_type1", "outer_material_type", "outer#1.material#1.value"
         , "item_length_description", "item_length_description#1.value"
+        , "fabric_type", "fabric_type#1.value"
+        , "water_resistance_level", "water_resistance_level#1.value"
+        , "material_type", "material#1.value"
+        , "occasion_type", "occasion_type#1.value"
+        , "inner", "occasion_type#1.value"
+        , "inner_material_type", "inner#1.material#1.value"
+        , "closure_type", "closure#1.type#1.value"
+        , "sleeve_type", "sleeve#1.type#1.value"
+        , "neck_style", "neck#1.neck_style#1.value"
         //, "occasion_type", "occasion_type#1.value"
     };
     productType_extraFieldIds["robe"] = clotheFieldIds;
     productType_extraFieldIds["dress"] = clotheFieldIds;
+    QSet<QString> shoeFieldIds{
+        "outer_material_type"
+        , "outer#1.material#1.value"
+        , "closure_type"
+        , "closure#1.type#1.value"
+        , "footwear_size_system"
+        , "footwear_size#1.size_system"
+        , "footwear_age_group"
+        , "footwear_size#1.age_group"
+        , "footwear_gender"
+        , "footwear_size#1.gender"
+        , "footwear_size_class"
+        , "footwear_size#1.size_class"
+        , "footwear_width"
+        , "footwear_size#1.width"
+        , "footwear_size"
+        , "footwear_size#1.size"
+        , "inner_material_type"
+        , "inner#1.material#1.value"
+        , "sole_material"
+        , "sole_material#1.value"
+        , "style_name", "style#1.value"
+        , "target_gender", "target_gender#1.value"
+        , "age_range_description", "age_range_description#1.value"
+        , "water_resistance_level", "water_resistance_level#1.value"
+        , "toe_style", "toe_style#1.value"
+        , "toe"
+        , "shaft_circumference", "shaft#1.circumference#1.value"
+        , "shaft_circumference_unit_of_measure", "shaft#1.circumference#1.unit"
+        , "shaft_height", "shaft#1.height#1.value"
+        , "shaft_height_unit_of_measure", "shaft#1.height#1.unit"
+        , "leather_type"
+    };
+    productType_extraFieldIds["boot"] = shoeFieldIds;
     for (auto it = productType_extraFieldIds.begin();
          it != productType_extraFieldIds.end(); ++it)
     {
@@ -664,6 +715,7 @@ const QHash<QString, TemplateMergerFiller::FuncFiller>
     , {"model", FUNC_FILLER_COPY}
     , {"model_name#1.value", FUNC_FILLER_COPY}
     , {"model_name", FUNC_FILLER_COPY}
+    , {"model_number#1.value", FUNC_FILLER_COPY}
     , {"manufacturer#1.value", FUNC_FILLER_COPY}
     , {"main_image_url", FUNC_FILLER_COPY}
     , {"main_product_image_locator#1.media_location", FUNC_FILLER_COPY}
@@ -710,6 +762,10 @@ const QHash<QString, TemplateMergerFiller::FuncFiller> TemplateMergerFiller::FIE
     , {"item_package_dimensions#1.height.value", FUNC_FILLER_COPY}
     , {"package_weight", FUNC_FILLER_COPY}
     , {"item_package_weight#1.value", FUNC_FILLER_COPY}
+    , {"shaft_circumference", FUNC_FILLER_COPY}
+    , {"shaft#1.circumference#1.value", FUNC_FILLER_COPY}
+    , {"shaft_height", FUNC_FILLER_COPY}
+    , {"shaft#1.height#1.value", FUNC_FILLER_COPY}
     , {"size_name", FUNC_FILLER_COPY}
     , {"size#1.value", FUNC_FILLER_COPY}
     , {"generic_keywords", FUNC_FILLER_PUT_KEYWORDS}
@@ -752,6 +808,10 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "apparel_size#1.body_type"
     , "apparel_height_type"
     , "apparel_size#1.height_type"
+    , "closure_type"
+    , "closure#1.type#1.value"
+    , "sleeve_type"
+    , "sleeve#1.type#1.value"
     , "leather_type"
     , "sole_material"
     , "size_map"
@@ -775,6 +835,9 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "item_package_dimensions#1.height.unit"
     , "package_width_unit_of_measure"
     , "item_package_dimensions#1.width.unit"
+    , "material_type", "material#1.value"
+    , "inner_material_type", "inner#1.material#1.value"
+    , "occasion_type", "occasion_type#1.value"
     //, "batteries_required", "batteries_required#1.value"
     // , "supplier_declared_dg_hz_regulation1", "supplier_declared_dg_hz_regulation#1.value"
     , "supplier_declared_material_regulation1"
@@ -822,14 +885,13 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     //, "bullet_point3", "bullet_point#3.value"
     //, "bullet_point4", "bullet_point#4.value"
     //, "bullet_point5", "bullet_point#5.value"
-    , "color_map"
+    , "color_map", "color#1.standardized_values#1"
     , "fit_type", "fit_type#1.value"
     , "collar_style", "collar_style#1.value"
     , "color_name", "color#1.value"
     , "weave_type", "weave_type#1.value"
     , "pattern_name"
     , "department_name", "department#1.value"
-    , "model"
     , "lifecycle_supply_type"
     , "item_length_description", "item_length_description#1.value"
     //, "fabric_type", "fabric_type#1.value"
@@ -852,11 +914,19 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     //, "item_type", "item_type"
     , "pattern_name", "pattern_name"
     , "model_name", "model_name#1.value"
-    , "model", "model"
+    , "model", "model_number#1.value"
     , "part_number", "part_number#1.value"
-    , "style", "style#1.value"
+    , "style_name", "style#1.value"
     , "care_instructions", "care_instructions#1.value"
     , "main_image_url", "main_product_image_locator#1.media_location"
+    , "shaft_circumference", "shaft#1.circumference#1.value"
+    , "shaft_circumference_unit_of_measure", "shaft#1.circumference#1.unit"
+    , "shaft_height", "shaft#1.height#1.value"
+    , "shaft_height_unit_of_measure", "shaft#1.height#1.unit"
+    , "toe_style", "toe_style#1.value"
+    , "leather_type"
+    , "target_audience", "target_audience#1.value"
+    , "supplier_package_type", "supplier_package_type#1.value"
 };
 
 const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTERN_POSSIBLE_VALUES
@@ -908,6 +978,40 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                 }
                 );
 
+    pattern_possibleValues.insert(
+                "closure_type",
+                QSet<QString>{
+                    "a enfiler"
+                    , "Pull-On" // IE-en, COM-en, FR-fr
+                    , "Pull-on" // SE-se, NL-nl, ES-es, IT-it, DE-de, UK-en
+                    , "Pull On" // PL-pl
+                    , "pull_on" // BE-fr
+                    , "Slip-On"
+                });
+    pattern_possibleValues.insert(
+                "closure_type",
+                QSet<QString>{
+                    "Zip"                 // IE-en, SE-se, COM-en, IT-it, UK-en
+                    , "Rits"              // NL-nl
+                    , "Cremallera"        // ES-es
+                    , "Zamek błyskawiczny"// PL-pl
+                    , "zip"               // BE-fr
+                    , "Éclair"            // FR-fr
+                    , "Reißverschluss"    // DE-de
+                });
+    pattern_possibleValues.insert(
+                "closure_type",
+                QSet<QString>{
+                    "Lace Up" // IE-en
+                    , "Lace-Up" // SE-se, COM-en, UK-en
+                    , "Veters" // NL-nl
+                    , "Cordones" // ES-es
+                    , "Zatrzask" // PL-pl → closest match to lace up (80% chance wrong)
+                    , "lace_up" // BE-fr
+                    , "Stringata" // IT-it
+                    , "Lacets" // FR-fr
+                    , "Schnürsenkel" // DE-de
+                });
 
 
     pattern_possibleValues.insert(
@@ -924,6 +1028,45 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     "China",   // DE - German
                     "中国"      // JP - Japanese
                 });
+    for (const auto &key : {"footwear_width", "footwear_size#1.width"})
+    {
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "Medium"    // UK-en, SE-se, IE-en, COM-en; NL-nl, DE-de → closest guess (40% chance wrong)
+                        , "Moyen"   // FR-fr; BE-fr → closest guess (35% chance wrong)
+                        , "Normale" // IT-it
+                        , "Normal" // DE
+                        , "Estándar"// ES-es
+                        , "Średni"  // PL-pl
+                        , "medium"  // Nl
+                    });
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "smal"      // NL-nl
+                        , "Narrow"  // IE-en, COM-en, UK-en
+                        , "Estrecho"// ES-es
+                        , "Smala"   // SE-se
+                        , "Wąskie"  // PL-pl
+                        , "Étroit"  // FR-fr, BE-fr
+                        , "Stretta" // IT-it
+                        , "Schmal"  // DE-de
+                    });
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "breed"    // NL-nl
+                        , "Wide"     // IE-en, COM-en, UK-en
+                        , "Ancho"    // ES-es
+                        , "Breda"    // SE-se
+                        , "Szerokie" // PL-pl
+                        , "Large"    // FR-fr, BE-fr
+                        , "Larga"    // IT-it
+                        , "Weit"     // DE-de
+                    });
+    }
+
     pattern_possibleValues.insert(
                 "height_type",
                 QSet<QString>{
@@ -943,12 +1086,93 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Regularny" // PL-pl
                 }
                 );
+    for (const auto &key : {"inner_material_type", "inner#1.material#1.value"})
+    {
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "Syntetisk"      // SE-se
+                        , "Synthetic"    // IE-en, UK-en; COM-en → closest guess (50% chance wrong)
+                        , "Synthetisch"  // NL-nl
+                        , "Sintético"    // ES-es
+                        , "Syntetyczny"  // PL-pl
+                        , "Synthétique"  // BE-fr, FR-fr
+                        , "Sintetico"    // IT-it
+                        , "Synthetik"    // DE-de
+                    });
+    }
+    pattern_possibleValues.insert(
+                "leather_type",
+                QSet<QString>{
+                    "Kunstmatig"       // NL-nl
+                    , "Sintetica"        // IT-it
+                    , "Artificial"       // UK-en, ES-es; COM-en, IE-en → closest guess (60% chance wrong)
+                    , "faux_suede_leather"   // BE-fr → closest guess to “Artificial” (70% chance wrong)
+                    , "Artificiel"       // FR-fr
+                    , "Artificiell"      // SE-se
+                    , "Kunstleder"       // DE-de
+                    , "Sztuczna skóra"   // PL-pl → closest guess (70% chance wrong)
+                });
+
+    pattern_possibleValues.insert(
+                "lifecycle_supply_type",
+                QSet<QString>{
+                    "Year Round Replenishable" // SE-se, NL-nl, PL-pl, ES-es, IT-it, FR-fr, DE-de, UK-en
+                    , "Rechargeable toute l'année" // BE-fr
+                });
+    for (const auto &key : {"outer_material_type", "outer#1.material#1.value"})
+    {
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "Synthetic"               // IE-en, COM-en, UK-en; SE-se, NL-nl → closest guess (40% chance wrong)
+                        , "synthetic"             // BE-fr
+                        , "Sintetico"             // IT-it
+                        , "Synthétique"           // FR-fr
+                        , "Synthetik"             // DE-de
+                        , "Sintético"             // ES-es
+                        , "Tworzywo syntetyczne"  // PL-pl
+                    });
+    }
+    for (const auto &key : {"package_height_unit_of_measure"
+         , "item_package_dimensions#1.height.unit"
+         , "package_width_unit_of_measure"
+         , "item_package_dimensions#1.width.unit"
+         , "package_length_unit_of_measure"
+         , "item_package_dimensions#1.length.unit"
+})
+    {
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "CM"           // DE-de, UK-en, IT-it, FR-fr, ES-es
+                        , "Centimeters"  // IE-en, COM-en
+                        , "centimeter"   // NL-nl, SE-se
+                        , "centimeters"  // BE-fr
+                        , "centymetry"   // PL-pl
+                    });
+    }
+    for (const auto &key : {"package_weight", "item_package_weight#1.value"})
+    {
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "GR"     // DE-de, UK-en, IT-it, FR-fr, ES-es
+                        , "Gramy"  // PL-pl
+                        , "Grams"  // IE-en, COM-en
+                        , "gram"   // NL-nl
+                        , "Gram"   // SE-se
+                        , "grams"  // BE-fr
+                    });
+    }
+
     for (const auto &key : {"parentage_level#1.value", "parent_child"})
     {
         pattern_possibleValues.insert(
                     key,
                     QSet<QString>{
                         "Child"
+                        , "Enfant"
                         , "Barn"
                         , "Çocuk"
                         , "Alt"
@@ -979,6 +1203,67 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Articolo parent"  // IT-it
                         , "Principal."       // MX-es (note the dot)
                         , "parent"           // BE-nl / BE-fr (lowercase)
+                    });
+    }
+    for (const auto &key : {"shaft_height_unit_of_measure", "shaft#1.height#1.unit"})
+    {
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "centimeter" // SE-se, NL-nl
+                        , "CM" // UK-en, FR-fr, IT-it, DE-de, ES-es; COM-en, IE-en, PL-pl → closest guess (30% chance wrong)
+                        , "centimeters" // BE-fr
+                    });
+    }
+    for (const auto &key : {"shaft#1.circumference#1.unit", "shaft_circumference_unit_of_measure"})
+    {
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "Centimeter" // SE-se
+                        , "Centimetres" // UK-en
+                        , "Centimeters" // COM-en, IE-en, NL-nl; PL-pl → closest guess (40% chance wrong)
+                        , "Centimètres" // BE-fr, FR-fr
+                        , "Centimetri" // IT-it
+                        , "Zentimeter" // DE-de
+                        , "Centímetros" // ES-es
+                    });
+    }
+    for (const auto &key : {"shaft#1.height#1.value", "shaft_height"})
+    {
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "Vrist" // SE-se
+                        , "Ankle" // UK-en, COM-en, IE-en; DE-de, PL-pl → closest guess (40% chance wrong)
+                        , "Cheville" // BE-fr, FR-fr
+                        , "cheville" // BE-fr, FR-fr
+                        , "Alla caviglia"// IT-it
+                        , "Enkel" // NL-nl
+                        , "Tobillo" // ES-es
+                    });
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "Over-The-Knee" // SE-se, UK-en; DE-de, PL-pl → closest guess (45% chance wrong)
+                        , "Above the Knee" // COM-en, IE-en
+                        , "Au-dessus du genou"// BE-fr
+                        , "cuissarde" // FR-fr
+                        , "Sopra il ginocchio"// IT-it
+                        , "Over de knie" // NL-nl
+                        , "Sobre la rodilla" // ES-es
+                    });
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "Knähög" // SE-se
+                        , "Knee-High" // UK-en; DE-de, PL-pl → closest guess (45% chance wrong)
+                        , "Knee High" // COM-en, IE-en
+                        , "Genou haut" // BE-fr
+                        , "genoux" // FR-fr
+                        , "Al ginocchio" // IT-it
+                        , "Knie-Hoog" // NL-nl
+                        , "Altura de rodilla" // ES-es
                     });
     }
 
@@ -1018,10 +1303,25 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Numérica"   // MX-es
                 }
                 );
+    pattern_possibleValues.insert(
+                "sole_material",
+                QSet<QString>{
+                    "Synthetic"            // SE-se, UK-en
+                    , "Synthetic Rubber"   // IE-en, COM-en — closest to generic “synthétique” (25% chance wrong)
+                    , "Synthetisch"        // NL-nl
+                    , "Caucho sintético"   // ES-es — closest to generic “synthétique” (20% chance wrong)
+                    , "Kauczuk"            // PL-pl — closest to generic “synthétique” (40% chance wrong)
+                    , "synthetic_rubber"   // BE-fr — closest to generic “synthétique” (25% chance wrong)
+                    , "Sintetico"          // IT-it
+                    , "Synthétique"        // FR-fr
+                    , "Synthetik"          // DE-de
+                });
+
 
     pattern_possibleValues.insert(
                 "supplier_declared_dg_hz_regulation1",
                 QSet<QString>{
+                    //"",
                     "N/A",
                     "Inte tillämplig",
                     "Not Applicable",       // IT-it, FR-fr, CA-en, IE-en, COM-en, ES-es, DE-de
@@ -1045,6 +1345,47 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     "No aplicable"         // ES-es
                 }
                 );
+    pattern_possibleValues.insert(
+                "toe_style",
+                QSet<QString>{
+                    "Round Toe" // IE-en, COM-en, UK-en
+                    , "Rund tå" // SE-se
+                    , "Ronde Teen" // NL-nl
+                    , "Punta redonda"// ES-es
+                    , "Nosek okrągły"// PL-pl
+                    , "round_toe" // BE-fr
+                    , "Punta rotonda"// IT-it
+                    , "Bout Rond" // FR-fr
+                    , "Rundzehe" // DE-de
+                });
+    pattern_possibleValues.insert(
+                "toe_style",
+                QSet<QString>{
+                    "Open Toe"       // IE-en, COM-en, UK-en
+                    , "Öppen tå"     // SE-se
+                    , "Open teen"    // NL-nl
+                    , "Punta abierta"// ES-es
+                    , "Nosek odkryty"// PL-pl
+                    , "open_toe"     // BE-fr
+                    , "Punta aperta" // IT-it
+                    , "Bout Ouvert"  // FR-fr
+                    , "Offen"        // DE-de
+                });
+    pattern_possibleValues.insert(
+                "toe_style",
+                QSet<QString>{
+                    "Pointed Toe"  // IE-en, COM-en, UK-en
+                    , "Spetsad tå" // SE-se
+                    , "Puntige teen" // NL-nl
+                    , "De punta"   // ES-es
+                    , "W szpic"    // PL-pl
+                    , "pointed_toe"// BE-fr
+                    , "a punta"    // IT-it
+                    , "Bout Pointu"// FR-fr
+                    , "Spitzzehe"  // DE-de
+                });
+
+
     for (const auto &key : {"update_delete"
          , "::record_action"})
     {
@@ -1054,6 +1395,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         "Aanmaken of vervangen (volledige update)"
                         , "Skapa eller ersätt (fullständig uppdatering)"
                         , "Create or Replace (Full Update)"
+                        , "Créer ou remplacer (actualisation complète)"
                         , "Erstellen oder Ersetzen (Vollständige Aktualisierung)"
                         , "Actualisation"
                         , "Update"
@@ -1086,6 +1428,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "SIZE/COLOR"
                     , "sizecolor"
                     , "ÖLÇÜ/RENK"
+                    , "TAILLE/COULEUR"
                     , "SIZE/COLOUR"      // UK-en
                     , "GRÖSSE/FARBE"     // DE-de
                     , "ROZMIAR/KOLOR"    // PL-pl
@@ -1111,6 +1454,12 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"::title", "::title"} // Include also the brand in the begin
         , {"::listing_status", "::listing_status"}
         , {"manufacturer", "manufacturer#1.value"}
+        , {"toe_style", "toe_style#1.value"}
+        , {"toe", "toe"}
+        , {"shaft_circumference", "shaft#1.circumference#1.value"}
+        , {"shaft_circumference_unit_of_measure", "shaft#1.circumference#1.unit"}
+        , {"shaft_height", "shaft#1.height#1.value"}
+        , {"shaft_height_unit_of_measure", "shaft#1.height#1.unit"}
         , {"leather_type", "leather_type"}
         , {"sole_material", "sole_material#1.value"}
         , {"collection_name", "collection#1.value"}
@@ -1133,6 +1482,7 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"package_weight", "item_package_weight#1.value"}
         , {"standard_price", "purchasable_offer#1.our_price#1.schedule#1.value_with_tax"}
         , {"list_price_with_tax", "list_price#1.value_with_tax"}
+        , {"list_price", "list_price#1.value"}
         , {"generic_keywords", "generic_keyword#1.value"}
         , {"external_product_id", "amzn1.volt.ca.product_id_value"}
         , {"external_product_id_type", "amzn1.volt.ca.product_id_type"}
@@ -1196,7 +1546,6 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"lifecycle_supply_type", "lifecycle_supply_type"}
         , {"item_length_description", "item_length_description#1.value"}
         , {"lifestyle", "lifestyle#1.value"}
-        , {"list_price", "list_price#1.value_with_tax"}
         , {"fabric_type", "fabric_type#1.value"}
         , {"department_name", "department#1.value"}
         , {"currency", "currency"}
@@ -1212,7 +1561,9 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"pattern_name", "pattern_name"}
         , {"closure_type", "closure#1.type#1.value"}
         , {"model_name", "model_name#1.value"}
-        , {"model", "model"}
+        , {"target_audience", "target_audience#1.value"}
+        , {"supplier_package_type", "supplier_package_type#1.value"}
+        , {"model", "model_number#1.value"}
         , {"part_number", "part_number#1.value"}
         , {"main_image_url", "main_product_image_locator#1.media_location"}
         , {"other_image_url1", "other_product_image_locator_1#1.media_location"}
@@ -1282,6 +1633,7 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"language_value5", "language#5.value"}
 
         , {"material_type", "material#1.value"}
+        , {"material#2.value", "material#2.value"}
         , {"neck_style", "neck#1.neck_style#1.value"}
         , {"number_of_items", "number_of_items#1.value"}
         , {"product_site_launch_date", "product_site_launch_date#1.value"}
@@ -1371,6 +1723,33 @@ TemplateMergerFiller::TYPE_COUNTRY_LANG_FIELD_ID_POSSIBLE_VALUES
             "Alpha"
             , "Numerisk"
 };
+    productType_countryCode_langCode_fieldId_possibleValues["boot"]["BE"]["FR"]["shaft_height_unit_of_measure"]
+            = QSet<QString>{
+            "centimeters"
+};
+    productType_countryCode_langCode_fieldId_possibleValues["boot"]["BE"]["FR"]["shaft_height"]
+            = QSet<QString>{
+            "Cheville"
+            , "Au-dessus du genou"
+            , "Mollet haut"
+            , "haut"
+};
+    productType_countryCode_langCode_fieldId_possibleValues["boot"]["DE"]["DE"]["shaft_height"]
+            = QSet<QString>{
+            "Halbschaft", "Kurzschaft", "Langschaft", "Over-Knee", "Wadenhoch", "Kniehoch", "Über dem Knie", "Knöchel"
+};
+    productType_countryCode_langCode_fieldId_possibleValues["boot"]["NL"]["NL"]["footwear_width"]
+            = QSet<QString>{
+            "medium", "smal", "breed"
+};
+    productType_countryCode_langCode_fieldId_possibleValues["boot"]["DE"]["DE"]["footwear_width"]
+            = QSet<QString>{
+            "Normal", "Schmal", "Weit"
+};
+    productType_countryCode_langCode_fieldId_possibleValues["boot"]["BE"]["FR"]["footwear_width"]
+            = QSet<QString>{
+            "Moyen", "Étroit", "Large"
+};
     for (auto it = productType_countryCode_langCode_fieldId_possibleValues.begin();
          it != productType_countryCode_langCode_fieldId_possibleValues.end(); ++it)
     {
@@ -1389,9 +1768,27 @@ void TemplateMergerFiller::_recordValueAllVersion(
             fieldId_value[id] = value;
         }
     }
-    else if (fieldId.contains("outer") && fieldId.contains("material"))
+    else if (fieldId.contains("material#1.value")
+             || fieldId.contains("material_type")
+             || (fieldId.contains("outer") && fieldId.contains("material")))
     {
         for (const auto &id : {"outer_material_type", "outer_material_type1", "outer#1.material#1.value"})
+        {
+            fieldId_value[id] = value;
+        }
+    }
+    /*
+    else if (fieldId.contains("fabric_type"))
+    {
+        for (const auto &id : {"fabric_type", "outer_material_type1", "fabric_type#1.value"})
+        {
+            fieldId_value[id] = value;
+        }
+    }
+    //*/
+    else if (fieldId.contains("model"))
+    {
+        for (const auto &id : {"model", "model_number#1.value", "model_name#1.value", "model_name"})
         {
             fieldId_value[id] = value;
         }
@@ -1830,6 +2227,10 @@ void TemplateMergerFiller::_readParentSkus(
             break;
         }
         QString sku{cellSku->value().toString()};
+        if (sku.startsWith("ABC"))
+        {
+            continue;
+        }
         auto cellSkuParent = document.cellAt(i+1, indColSkuParent + 1);
         if (cellSkuParent)
         {
@@ -1872,6 +2273,7 @@ void TemplateMergerFiller:: _readSkus(QXlsx::Document &document,
         QString sku{cellSku->value().toString()};
         if (sku.startsWith("ABC"))
         {
+            Q_ASSERT(!isMainFile);
             break; //it means it is the exemple of an empty file
         }
         if (sku.isEmpty())
@@ -1899,7 +2301,7 @@ void TemplateMergerFiller:: _readSkus(QXlsx::Document &document,
     {
         ExceptionTemplateError exception;
         exception.setInfos(QObject::tr("Field ids not supported"),
-                           QObject::tr("The following field ids are not supported:\n %1")
+                           QObject::tr("The following field ids are not supported and need to be added in the mapping:\n %1")
                            .arg(missingFieldIds.join("\n")));
         exception.raise();
     }
@@ -1993,8 +2395,8 @@ void TemplateMergerFiller:: _readSkus(QXlsx::Document &document,
                     else if (fieldId == "target_gender"
                              || fieldId == "target_gender#1.value")
                     {
-                        static QSet<QString> women{"Féminin", "Female"};
-                        static QSet<QString> men{"Masculin", "Male"};
+                        static QSet<QString> women{"Féminin", "Female", "Femme"};
+                        static QSet<QString> men{"Masculin", "Homme", "Male"};
                         static QSet<QString> unisex{"Unisexe"};
                         if (women.contains(valueString))
                         {
@@ -2047,99 +2449,6 @@ void TemplateMergerFiller:: _readSkus(QXlsx::Document &document,
             }
         }
     }
-    /*
-    if (isMainFile)
-    {
-        auto valid1 = skus.size();
-        auto valid2 = skus.size()-nParents;
-        const QSet<qsizetype> validCounts{valid1, valid2};
-        auto neededFieldIds = FIELD_IDS_NOT_AI;
-        neededFieldIds.unite(FIELD_IDS_AI_BUT_REQUIRED_IN_FIRST);
-
-        for (const auto &fieldId : neededFieldIds)
-        {
-            static QSet<QString> excludeFieldIds{ //Field ids that can be uncomplete as retrieved from source
-                "external_product_id"
-                , "amzn1.volt.ca.product_id_value"
-                , "external_product_type"
-                , "external_product_id_type"
-                , "amzn1.volt.ca.product_id_type"
-                , "apparel_size_to"
-                , "apparel_size#1.size_to"
-            };
-            if (excludeFieldIds.contains(fieldId))
-            {
-                continue;
-            }
-            if (fieldId_index.contains(fieldId))
-            {
-                qsizetype curCount = fieldId_count.value(fieldId, 0);
-                if (!validCounts.contains(curCount))
-                {
-                    ExceptionTemplateError exception;
-                    exception.setInfos(QObject::tr("Informations missing"),
-                                       QObject::tr("The field %1 has only %2 values. The correct number should be either %3 or %4.")
-                                       .arg(
-                                           fieldId,
-                                           QString::number(curCount),
-                                           QString::number(valid1),
-                                           QString::number(valid2))
-                                       );
-                    exception.raise();
-                }
-            }
-        }
-        QStringList skuMissingColors;
-        QStringList missingFileNameImages;
-        for (auto it = m_sku_skuInfos.begin();
-             it != m_sku_skuInfos.end(); ++it)
-        {
-            const auto &info = it.value();
-            if (!QFile::exists(info.imageFilePath))
-            {
-                QFileInfo imageFileInfo{info.imageFilePath};
-                QString fileName{"images/"};
-                fileName += imageFileInfo.fileName();
-                if (!missingFileNameImages.contains(fileName))
-                {
-                    missingFileNameImages << fileName;
-                }
-            }
-            if (info.colorOrig.isEmpty())
-            {
-                if (!skuMissingColors.contains(it.key()))
-                {
-                    skuMissingColors << it.key();
-                }
-            }
-        }
-        if (skuMissingColors.size() > 0)
-        {
-            std::sort(skuMissingColors.begin(), skuMissingColors.end());
-            ExceptionTemplateError exception;
-            exception.setInfos(QObject::tr("Images missing"),
-                               QObject::tr("The following SKUs doesn't have a color name:\n%1")
-                               .arg(skuMissingColors.join("\n")));
-            exception.raise();
-        }
-        if (missingFileNameImages.size() > 0)
-        {
-            std::sort(missingFileNameImages.begin(), missingFileNameImages.end());
-            ExceptionTemplateError exception;
-            exception.setInfos(QObject::tr("Images missing"),
-                               QObject::tr("The following images are missing:\n%1")
-                               .arg(missingFileNameImages.join("\n")));
-            exception.raise();
-        }
-        if (m_productType.isEmpty())
-        {
-            ExceptionTemplateError exception;
-            exception.setInfos(QObject::tr("Product type missing"),
-                               QObject::tr("The product type is needed"));
-            exception.raise();
-        }
-    }
-    //*/
 }
 
 void TemplateMergerFiller::_setFilePathsToFill(const QStringList &keywordFilePaths,
@@ -2167,6 +2476,7 @@ void TemplateMergerFiller::_setFilePathsToFill(const QStringList &keywordFilePat
             _readParentSkus(document, countryCodeTo, langCodeTo, m_skuParent_skus);
             _readSkus(document, countryCodeTo, langCodeTo, m_skus, m_sku_skuInfos, m_sku_countryCode_langCode_fieldId_origValue, true);
             m_sku_countryCode_langCode_fieldId_value = m_sku_countryCode_langCode_fieldId_origValue;
+            Q_ASSERT(m_sku_countryCode_langCode_fieldId_origValue.size() > 0);
         }
         else
         {
@@ -2180,6 +2490,44 @@ void TemplateMergerFiller::_setFilePathsToFill(const QStringList &keywordFilePat
         _preFillTitles();
         _readValidValues(document, countryCodeTo, langCodeTo, countryCodeFrom, langCodeFrom);
     }
+    /*
+    QSet<QString> allSelectFieldIds;
+    for (auto itCountryCode = m_countryCode_langCode_fieldId_possibleValues.begin();
+         itCountryCode != m_countryCode_langCode_fieldId_possibleValues.end(); ++itCountryCode)
+    {
+        for (auto itLangCode = itCountryCode.value().cbegin();
+             itLangCode != itCountryCode.value().cend(); ++itLangCode)
+        {
+            for (auto itFieldId = itLangCode.value().cbegin();
+                 itFieldId != itLangCode.value().cend(); ++itFieldId)
+            {
+                allSelectFieldIds.insert(itFieldId.key());
+            }
+        }
+    }
+    for (const auto &toFillFilePath : toFillFilePathsSorted)
+    {
+        const auto &countryCodeTo = _getCountryCode(toFillFilePath);
+        const auto &langCodeTo = _getLangCode(toFillFilePath);
+        QXlsx::Document document(toFillFilePath);
+        const auto &fieldId_index = _get_fieldId_index(document);
+        for (auto itFieldId_index = fieldId_index.constBegin();
+             itFieldId_index != fieldId_index.constEnd(); ++itFieldId_index)
+        {
+            const auto &fieldId = itFieldId_index.key();
+            if (allSelectFieldIds.contains(fieldId))
+            {
+                if (!m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo].contains(fieldId))
+                {
+                    ExceptionTemplateError exception;
+                    exception.setInfos("Select field missing",
+                                       "In the template of " + countryCodeTo + "/" + langCodeTo + " the following field id doesn't have its possible values: " + fieldId);
+                    exception.raise();
+                }
+            }
+        }
+    }
+    //*/
 }
 
 void TemplateMergerFiller::_readInfoSources(const QStringList &sourceFilePaths)
@@ -2383,6 +2731,11 @@ void TemplateMergerFiller::_checkMinimumValues(const QString &toFillFilePath)
             , "amzn1.volt.ca.product_id_type"
             , "apparel_size_to"
             , "apparel_size#1.size_to"
+            , "footwear_size"
+            , "apparel_size#1.size"
+            , "footwear_to_size"
+            , "footwear_size#1.to_size"
+            , "generic_keyword#1.value"
         };
         if (excludeFieldIds.contains(fieldId))
         {
@@ -3160,6 +3513,7 @@ void TemplateMergerFiller::_readValidValues(
         }
     }
 
+    // Fill automatically unique value of possibleValues
     QHash<QString, QHash<QString, QHash<QString, QStringList>>> countryCode_langCode_fieldId_possibleValues;
     //* // COMMENT when filling AUTO_SELECT_PATTERN_POSSIBLE_VALUES from the UE with DialogPossibleValues
     for (auto itFieldId = m_countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo].begin();
@@ -3169,7 +3523,8 @@ void TemplateMergerFiller::_readValidValues(
         if (m_countryCode_langCode_fieldIdMandatory[countryCodeTo][langCodeTo].contains(fieldId))
         {
             const auto &possibleValues = itFieldId.value();
-            if (possibleValues.size() == 1)
+            if (possibleValues.size() == 1
+                    || (possibleValues.size() == 2 && possibleValues[0] == possibleValues[1]))
             {
                 const auto &uniquePossibleValue = *possibleValues.begin();
                 for (auto itSku = m_sku_countryCode_langCode_fieldId_origValue.begin();
@@ -3188,7 +3543,9 @@ void TemplateMergerFiller::_readValidValues(
                 for (auto it = AUTO_SELECT_PATTERN_POSSIBLE_VALUES.begin();
                      it != AUTO_SELECT_PATTERN_POSSIBLE_VALUES.end(); ++it)
                 {
+                    bool isParent = false;
                     const auto &patternFieldId = it.key();
+                    QString sku;
                     if (fieldId.contains(patternFieldId))
                     {
                         bool found = false;
@@ -3197,8 +3554,8 @@ void TemplateMergerFiller::_readValidValues(
                         for (auto itSku = m_sku_countryCode_langCode_fieldId_origValue.begin();
                              itSku != m_sku_countryCode_langCode_fieldId_origValue.end(); ++itSku)
                         {
-                            const auto &sku = itSku.key();
-                            bool isParent = _isSkuParent(sku);
+                            sku = itSku.key();
+                            isParent = _isSkuParent(sku);
                             if (!isParent || !m_countryCode_langCode_fieldIdChildOnly[countryCodeTo][langCodeTo].contains(fieldId))
                             {
                                 if (m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom].contains(fieldId))

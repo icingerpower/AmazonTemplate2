@@ -13,7 +13,7 @@ We always use the metric unit system when there is a choice. This is the descrip
 You need to select a value for the following field: %3
 Return your answer only as a single JSON object matching the following pattern (no extra keys, no comments, no prose):
 %4
-You will have to replace each "values" by "value" and select only one value that match the previous details.
+You will have to replace "values" by "value" and select only one value that match the previous details and keep everything else from the input json
 Now produce the JSON.)"
 );
 
@@ -23,7 +23,7 @@ const QString JsonReplySelect::PROMPT_TRANSLATE
 We always use the metric unit system when there is a choice.
 Return your answer only as a single JSON object matching the following pattern (no extra keys, no comments, no prose):
 %3
-You will have to replace each "values" by "value" and select only one value that match the previous details.
+You will have to replace "values" by "value" and select only one value that match the previous details.
 You need to select a "value" that match what is in "fromValue".
 Now produce the JSON.)"
 );

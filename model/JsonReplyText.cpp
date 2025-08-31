@@ -72,6 +72,13 @@ bool JsonReplyText::isJsonReplyCorrect(
                     return false;
                 }
             }
+            if (fieldId.contains("material"))
+            {
+                if (value.size() > 50)
+                {
+                    return false;
+                }
+            }
             if (fieldId.contains("style"))
             {
                 if (value.size() > 100)

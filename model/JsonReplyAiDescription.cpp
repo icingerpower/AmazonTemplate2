@@ -55,7 +55,7 @@ Output checks (must-pass)
 Return only the JSON object.
 Keys and order exactly as in the schema.
 Title ≤ 100 chars.
-5 bullets in each array; each bullet < 250 chars; first has hook; others use Label: format; exactly one emoji at the start.
+5 bullets in each array; each bullet > 100 chars and < 250 chars; first has hook; others use Label: format; exactly one emoji at the start.
 HTML used only inside the two description fields and only with allowed tags.
 No color words anywhere in the title.
 Now analyze the single attached image and produce the JSON.)");

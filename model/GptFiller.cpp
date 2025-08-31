@@ -727,7 +727,7 @@ void GptFiller::askFillingSelectsAndTexts(
                                                 jsonPossibleValues << possibleValue;
                                             }
                                             Q_ASSERT(jsonPossibleValues.size() > 1);
-                                            Q_ASSERT(jsonPossibleValues.size() < 40); // Implement a rule with TemplateMergerFiller::AUTO_SELECT_PATTERN_POSSIBLE_VALUES
+                                            Q_ASSERT(jsonPossibleValues.size() < 55); // Implement a rule with TemplateMergerFiller::AUTO_SELECT_PATTERN_POSSIBLE_VALUES
                                             JsonSourceInfos &jsonSourceInfos = skuParent_color_countryCode_langCode_fieldId_jsonSourceSelect[skuParent][colorFinal][countryCodeTo][langCodeTo][fieldId];
                                             jsonSourceInfos.countryCodesTo << countryCodeTo;
                                             jsonSourceInfos.langCodesTo << langCodeTo;
@@ -735,11 +735,14 @@ void GptFiller::askFillingSelectsAndTexts(
                                             {
                                                 if ((*m_sku_countryCode_langCode_fieldId_origValue)[sku][m_countryCodeFrom][m_langCodeFrom].contains(fieldId))
                                                 {
-                                                    QJsonObject origValue;
-                                                    origValue["countryCodeFrom"] = m_countryCodeFrom;
-                                                    origValue["langCodeFrom"] = m_langCodeFrom;
-                                                    origValue["value"] = (*m_sku_countryCode_langCode_fieldId_origValue)[sku][m_countryCodeFrom][m_langCodeFrom][fieldId].toString();
-                                                    jsonSourceInfos.object["fromValue"] = origValue;
+                                                    if (!fieldId.contains("size_system"))
+                                                    {
+                                                        QJsonObject origValue;
+                                                        origValue["countryCodeFrom"] = m_countryCodeFrom;
+                                                        origValue["langCodeFrom"] = m_langCodeFrom;
+                                                        origValue["value"] = (*m_sku_countryCode_langCode_fieldId_origValue)[sku][m_countryCodeFrom][m_langCodeFrom][fieldId].toString();
+                                                        jsonSourceInfos.object["fromValue"] = origValue;
+                                                    }
                                                 }
                                             }
                                             if (!jsonSourceInfos.object.contains(countryCodeTo))
@@ -971,6 +974,10 @@ void GptFiller::_askFillingTexts(
                         customInstructions += ". Your reply \"value\" should be under 50 characters.";
                     }
                     else if (fieldId.contains("pattern"))
+                    {
+                        customInstructions += ". Your reply \"value\" should be under 50 characters.";
+                    }
+                    else if (fieldId.contains("material"))
                     {
                         customInstructions += ". Your reply \"value\" should be under 40 characters.";
                     }
@@ -1210,7 +1217,15 @@ QHash<QString, QHash<QString, QHash<QString, QString> > > GptFiller::_get_sku_co
                             {
                                 if (fieldId_value.contains(fieldIdSize))
                                 {
-                                    sizeTitle += fieldId_value[fieldIdSize].toString();
+                                    if (!sizeTitle.endsWith("="))
+                                    {
+                                        const auto &countrySizeTitle = fieldId_value[fieldIdSize].toString();
+                                        if (countrySizeTitle != infos.sizeOrig)
+                                        {
+                                            sizeTitle += infos.sizeOrig + "=";
+                                        }
+                                    }
+                                    sizeTitle += countryCode + "-" + fieldId_value[fieldIdSize].toString();
                                     varElements << sizeTitle;
                                     break;
                                 }
