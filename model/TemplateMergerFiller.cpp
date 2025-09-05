@@ -381,9 +381,9 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_SHOE_
                 && age_range_description == Age::Adult)
             {
                 QSet<QString> groupEu{"FR", "BE", "ES", "IT", "DE", "NL", "SE", "PL", "TR"};
-                QSet<QString> groupUs{"COM", "CA", "MX", "SA", "SG", "AE"};
+                QSet<QString> groupUs{"COM", "CA", "SA", "SG", "AE"};
                 QSet<QString> groupUk{"UK", "IE", "AU"};
-                QSet<QString> groupJp{"Jp"};
+                QSet<QString> groupJp{"JP", "MX"};
                 QSet<double> corEu_other{40., 41., 43., 44.};
                 double firstSizeEu = 34.;
                 double curSizeUs = 3.-1.;
@@ -419,9 +419,9 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_SHOE_
                      && age_range_description == Age::Adult)
             {
                 QSet<QString> groupEu{"FR","BE","ES","IT","DE","NL","SE","PL","TR"};
-                QSet<QString> groupUs{"COM","CA","MX","SA","SG","AE"};
+                QSet<QString> groupUs{"COM","CA","SA","SG","AE"};
                 QSet<QString> groupUk{"UK","IE","AU"};
-                QSet<QString> groupJp{"Jp"};
+                QSet<QString> groupJp{"JP", "MX"};
 
                 double firstSizeEu = 38.;
                 // US at EU38 = 38−33 = 5
@@ -465,6 +465,15 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_SHOE_
                      && countryCode_size.contains(countryFrom));
             if (qAbs(countryCode_size[countryFrom] - num) < 0.0001)
             {
+                if (countryTo == "MX")
+                {
+                    QString sizeCm{QString::number(countryCode_size[countryTo])};
+                    if (sizeCm.contains("."))
+                    {
+                        return sizeCm += " cm";
+                    }
+                    return sizeCm += ".0 cm";
+                }
                 return countryCode_size[countryTo];
             }
         }
@@ -594,7 +603,7 @@ const QHash<QString, QSet<QString>> TemplateMergerFiller::PRODUCT_TYPE_FIELD_IDS
         , "water_resistance_level", "water_resistance_level#1.value"
         , "material_type", "material#1.value"
         , "occasion_type", "occasion_type#1.value"
-        , "inner", "occasion_type#1.value"
+        , "inner"
         , "inner_material_type", "inner#1.material#1.value"
         , "closure_type", "closure#1.type#1.value"
         , "sleeve_type", "sleeve#1.type#1.value"
@@ -635,8 +644,16 @@ const QHash<QString, QSet<QString>> TemplateMergerFiller::PRODUCT_TYPE_FIELD_IDS
         , "shaft_height", "shaft#1.height#1.value"
         , "shaft_height_unit_of_measure", "shaft#1.height#1.unit"
         , "leather_type"
+        , "occasion_type#1.value"
+        , "occasion_type"
+        , "closure#1.type#1.value"
+        , "sandal_type#1.value"
+        , "heel#1.type#1.value"
+        , "height_map#1.value"
     };
     productType_extraFieldIds["boot"] = shoeFieldIds;
+    productType_extraFieldIds["shoes"] = shoeFieldIds;
+    productType_extraFieldIds["sandal"] = shoeFieldIds;
     for (auto it = productType_extraFieldIds.begin();
          it != productType_extraFieldIds.end(); ++it)
     {
@@ -669,7 +686,7 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_PATTERN_REMOVE_AS_MANDATORY{
     , "footwear_to_size_unisex"
     , "footwear_width_unisex"
     , "footwear_gender_unisex"
-    , "height_map"
+    //, "height_map"
 };
 
 const QSet<QString> TemplateMergerFiller::FIELD_IDS_ALWAY_SAME_VALUE{
@@ -736,9 +753,9 @@ const QHash<QString, TemplateMergerFiller::FuncFiller> TemplateMergerFiller::FIE
     , {"apparel_size_to", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
     , {"apparel_size#1.size_to", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
     , {"footwear_size", FUNC_FILLER_CONVERT_SHOE_SIZE}
-    , {"footwear_size#1.size", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
+    , {"footwear_size#1.size", FUNC_FILLER_CONVERT_SHOE_SIZE}
     , {"footwear_to_size", FUNC_FILLER_CONVERT_SHOE_SIZE}
-    , {"footwear_size#1.to_size", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
+    , {"footwear_size#1.to_size", FUNC_FILLER_CONVERT_SHOE_SIZE}
     , {"shapewear_size", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
     , {"shapewear_size#1.size", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
     , {"shapewear_size_to", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
@@ -813,7 +830,6 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "sleeve_type"
     , "sleeve#1.type#1.value"
     , "leather_type"
-    , "sole_material"
     , "size_map"
     , "size_name"
     , "size#1.value"
@@ -927,6 +943,13 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "leather_type"
     , "target_audience", "target_audience#1.value"
     , "supplier_package_type", "supplier_package_type#1.value"
+    , "occasion_type#1.value"
+    , "occasion_type"
+    , "closure#1.type#1.value"
+    , "sandal_type#1.value"
+    , "sole_material", "sole_material#1.value"
+    , "heel#1.type#1.value"
+    , "height_map#1.value"
 };
 
 const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTERN_POSSIBLE_VALUES
@@ -934,25 +957,28 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
 {
     QMultiHash<QString, QSet<QString>> pattern_possibleValues;
 
-    pattern_possibleValues.insert(
-                "age_range_description",
-                QSet<QString>{
-                    "Adulte"
-                    , "Adult"
-                    , "Adult"
-                    , "Yetişkin"
-                    , "Adulto"
-                    , "Erwachsener"
-                    , "Volwassene"
-                    , "Adulte"
-                    , "Adult"
-                    , "Adulte"
-                    , "Volwassene"
-                    , "Vuxen"
-                    , "Adulto"
-                    , "Dla dorosłych"  // PL-pl
-                }
-                );
+    for (const auto &key : {"age_range_description", "age_group"})
+    {
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "Adulte"
+                        , "Adult"
+                        , "Adult"
+                        , "Yetişkin"
+                        , "Adulto"
+                        , "Erwachsener"
+                        , "Volwassene"
+                        , "Adulte"
+                        , "Adult"
+                        , "Adulte"
+                        , "Volwassene"
+                        , "Vuxen"
+                        , "Adulto"
+                        , "Dla dorosłych"  // PL-pl
+                    }
+                    );
+    }
     pattern_possibleValues.insert(
                 "batteries_required",
                 QSet<QString>{
@@ -1040,6 +1066,8 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Estándar"// ES-es
                         , "Średni"  // PL-pl
                         , "medium"  // Nl
+                        , "mediano" // MX-es
+                        , "Medium" // COM-en
                     });
         pattern_possibleValues.insert(
                     key,
@@ -1052,7 +1080,20 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Étroit"  // FR-fr, BE-fr
                         , "Stretta" // IT-it
                         , "Schmal"  // DE-de
+                        , "Estrecho" // MX-es
+                        , "Mince" // CA-fr — closest to “étroit”; risk of mismatch ≈20%
                     });
+        for (const auto &key : {"fulfillment_availability#1.fulfillment_channel_code", "fulfillment_center_id"})
+        {
+            pattern_possibleValues.insert(
+                        key,
+                        QSet<QString>{
+                            "AMAZON_NA"
+                            , "AMAZON_EU"
+                            , "AMAZON_JP"
+                            , "AMAZON_AU"
+                        });
+        }
         pattern_possibleValues.insert(
                     key,
                     QSet<QString>{
@@ -1066,6 +1107,26 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Weit"     // DE-de
                     });
     }
+    pattern_possibleValues.insert(
+                "gender",
+                QSet<QString>{
+                    "Mujer" // MX-es
+                    , "Women" // CA-en
+                    , "Femme" // CA-fr
+                    , "Female" // CA-fr
+                    , "Women" // COM-en
+                    , "Femenino" // MX
+                });
+    pattern_possibleValues.insert(
+                "gender",
+                QSet<QString>{
+                    "Hombre" // MX-es
+                    , "Men" // CA-en
+                    , "Male" // CA-en
+                    , "Homme" // CA-fr
+                    , "Men" // COM-en
+                    , "Masculino" // MX
+                });
 
     pattern_possibleValues.insert(
                 "height_type",
@@ -1133,6 +1194,13 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Sintético"             // ES-es
                         , "Tworzywo syntetyczne"  // PL-pl
                     });
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "Polyurethane (PU)" // CA-en, COM-en
+                        , "Polyuréthane (PU)" // CA-fr
+                        , "Poliuretano (PU)" // MX-es
+                    });
     }
     for (const auto &key : {"package_height_unit_of_measure"
          , "item_package_dimensions#1.height.unit"
@@ -1150,6 +1218,10 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "centimeter"   // NL-nl, SE-se
                         , "centimeters"  // BE-fr
                         , "centymetry"   // PL-pl
+                        , "Centimètres"   // PL-pl
+                        , "Centimetri" // IT-it
+                        , "Zentimeter" // DE-de
+                        , "Centímetros" // ES-es
                     });
     }
     for (const auto &key : {"package_weight", "item_package_weight#1.value"})
@@ -1160,9 +1232,11 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         "GR"     // DE-de, UK-en, IT-it, FR-fr, ES-es
                         , "Gramy"  // PL-pl
                         , "Grams"  // IE-en, COM-en
+                        , "Gramos"
                         , "gram"   // NL-nl
                         , "Gram"   // SE-se
                         , "grams"  // BE-fr
+                        , "Grammes"
                     });
     }
 
@@ -1223,6 +1297,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         "Centimeter" // SE-se
                         , "Centimetres" // UK-en
                         , "Centimeters" // COM-en, IE-en, NL-nl; PL-pl → closest guess (40% chance wrong)
+                        , "centymetry"   // PL-pl
                         , "Centimètres" // BE-fr, FR-fr
                         , "Centimetri" // IT-it
                         , "Zentimeter" // DE-de
@@ -1316,6 +1391,28 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Synthétique"        // FR-fr
                     , "Synthetik"          // DE-de
                 });
+    pattern_possibleValues.insert(
+                "sole_material",
+                QSet<QString>{
+                    "Synthetic Rubber" // CA-en, COM-en
+                    , "Caoutchouc synthétique" // CA-fr
+                    , "Corcho sintético" // MX-es
+                });
+    /*
+    pattern_possibleValues.insert(
+                "sole_material",
+                QSet<QString>{
+                    "Rubber"            // SE-se, UK-en
+                    , "Synthetic Rubber"   // IE-en, COM-en — closest to generic “synthétique” (25% chance wrong)
+                    , "Synthetisch"        // NL-nl
+                    , "Caucho sintético"   // ES-es — closest to generic “synthétique” (20% chance wrong)
+                    , "Kauczuk"            // PL-pl — closest to generic “synthétique” (40% chance wrong)
+                    , "synthetic_rubber"   // BE-fr — closest to generic “synthétique” (25% chance wrong)
+                    , "Sintetico"          // IT-it
+                    , "Synthétique"        // FR-fr
+                    , "Synthetik"          // DE-de
+                });
+                //*/
 
 
     pattern_possibleValues.insert(
@@ -1483,6 +1580,7 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"standard_price", "purchasable_offer#1.our_price#1.schedule#1.value_with_tax"}
         , {"list_price_with_tax", "list_price#1.value_with_tax"}
         , {"list_price", "list_price#1.value"}
+        , {"uvp_list_price", "uvp_list_price#1.value"}
         , {"generic_keywords", "generic_keyword#1.value"}
         , {"external_product_id", "amzn1.volt.ca.product_id_value"}
         , {"external_product_id_type", "amzn1.volt.ca.product_id_type"}
@@ -1574,6 +1672,7 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"other_image_url6", "other_product_image_locator_6#1.media_location"}
         , {"other_image_url7", "other_product_image_locator_7#1.media_location"}
         , {"other_image_url8", "other_product_image_locator_8#1.media_location"}
+        , {"swatch_image_url1", "swatch_product_image_locator#1.media_location"}
         , {"gpsr_manufacturer_reference_email_address", "gpsr_manufacturer_reference#1.gpsr_manufacturer_email_address"}
         , {"occasion_type", "occasion_type#1.value"}
         , {"merchant_shipping_group_name", "merchant_shipping_group#1.value"}
@@ -1644,7 +1743,6 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
 
         , {"sleeve_type", "sleeve#1.type#1.value"}
 
-        , {"list_price_with_tax", "uvp_list_price#1.value"}
         , {"water_resistance_level", "water_resistance_level#1.value"}
         , {"binding", "binding#1.value"}
         , {"condition_note", "condition_note#1.value"}
@@ -1664,6 +1762,8 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"warranty_description", "warranty_description#1.value"}
 
         , {"inner_material_type", "inner#1.material#1.value"}
+        , {"sandal_type", "sandal_type#1.value"}
+        , {"height_map#1.value", "height_map#1.value"}
     };
     QHash<QString, QString> _mappingFieldId = _mappingFieldIdTemp;
     for (auto it = _mappingFieldIdTemp.begin();
@@ -1750,6 +1850,25 @@ TemplateMergerFiller::TYPE_COUNTRY_LANG_FIELD_ID_POSSIBLE_VALUES
             = QSet<QString>{
             "Moyen", "Étroit", "Large"
 };
+    productType_countryCode_langCode_fieldId_possibleValues["shoes"]["MX"]["ES"]["footwear_size#1.size_class"]
+            = QSet<QString>{
+            "Medición", "Letras"
+};
+    productType_countryCode_langCode_fieldId_possibleValues["shoes"]["MX"]["ES"]["footwear_size#1.width"]
+            = QSet<QString>{
+            "A", "B", "C", "D", "E"
+};
+    productType_countryCode_langCode_fieldId_possibleValues["shoes"]["CA"]["FR"]["footwear_size#1.width"]
+            = productType_countryCode_langCode_fieldId_possibleValues["boot"]["BE"]["FR"]["footwear_width"];
+    for (const auto &key : {"boot", "sandal"})
+    {
+        productType_countryCode_langCode_fieldId_possibleValues[key]["MX"]["ES"]["footwear_size#1.width"]
+                = productType_countryCode_langCode_fieldId_possibleValues["shoes"]["MX"]["ES"]["footwear_size#1.width"];
+        productType_countryCode_langCode_fieldId_possibleValues[key]["MX"]["ES"]["footwear_size#1.size_class"]
+                = productType_countryCode_langCode_fieldId_possibleValues["shoes"]["MX"]["ES"]["footwear_size#1.size_class"];
+        productType_countryCode_langCode_fieldId_possibleValues[key]["CA"]["FR"]["footwear_size#1.width"]
+                = productType_countryCode_langCode_fieldId_possibleValues["shoes"]["CA"]["FR"]["footwear_size#1.width"];
+    }
     for (auto it = productType_countryCode_langCode_fieldId_possibleValues.begin();
          it != productType_countryCode_langCode_fieldId_possibleValues.end(); ++it)
     {
@@ -1759,20 +1878,21 @@ TemplateMergerFiller::TYPE_COUNTRY_LANG_FIELD_ID_POSSIBLE_VALUES
 }();
 
 void TemplateMergerFiller::_recordValueAllVersion(
-        QHash<QString, QVariant> &fieldId_value, const QString fieldId, const QVariant &value)
+        QHash<QString, QVariant> &fieldId_value, const QString &fieldId, const QVariant &value)
 {
     if (fieldId.contains("list_price"))
     {
-        for (const auto &id : {"list_price", "list_price_with_tax", "list_price#1.value_with_tax"})
+        for (const auto &id : {"uvp_list_price#1.value", "list_price#1.value", "list_price", "list_price_with_tax", "list_price#1.value_with_tax"})
         {
             fieldId_value[id] = value;
         }
     }
-    else if (fieldId.contains("material#1.value")
+    else if (fieldId != "sole_material#1.value" && fieldId != "sole_material"
+             && (fieldId.contains("material#1.value")
              || fieldId.contains("material_type")
-             || (fieldId.contains("outer") && fieldId.contains("material")))
+             || (fieldId.contains("outer") && fieldId.contains("material"))))
     {
-        for (const auto &id : {"outer_material_type", "outer_material_type1", "outer#1.material#1.value"})
+        for (const auto &id : {"material#1.value", "outer_material_type", "outer_material_type1", "inner#1.material#1.value", "outer#1.material#1.value"})
         {
             fieldId_value[id] = value;
         }
@@ -1805,6 +1925,7 @@ void TemplateMergerFiller::_recordValueAllVersion(
         Q_ASSERT(!MAPPING_FIELD_ID[fieldId].isEmpty());
         fieldId_value[MAPPING_FIELD_ID[fieldId]] = value;
     }
+    Q_ASSERT(fieldId_value.contains(fieldId));
 }
 
 QString TemplateMergerFiller::_getCustomInstructions(const QString &sku) const
@@ -2235,7 +2356,10 @@ void TemplateMergerFiller::_readParentSkus(
         if (cellSkuParent)
         {
             QString skuParent{cellSkuParent->value().toString()};
-            skuParent_skus.insert(skuParent, sku);
+            if (!skuParent.isEmpty())
+            {
+                skuParent_skus.insert(skuParent, sku);
+            }
         }
     }
 }
@@ -3240,7 +3364,7 @@ void TemplateMergerFiller::_createToFillXlsx()
         const auto &fieldId_index = _get_fieldId_index(document);
         int row = _getRowFieldId(version) + 1;
         document.setRowHidden(row, false);
-        if (version == V02)
+        if (version == V02 && toFillFilePath != m_filePathFrom)
         {
             ++row;
             auto dim = document.dimension();
@@ -3251,6 +3375,11 @@ void TemplateMergerFiller::_createToFillXlsx()
                 {
                     auto format = cell->format();
                     document.write(row+1, j+1, QVariant{}, format);
+                }
+                auto cellNext = document.cellAt(row+2, j+1);
+                if (cellNext)
+                {
+                    auto format = cell->format();
                     document.write(row+2, j+1, QVariant{}, format);
                 }
             }
@@ -3534,23 +3663,27 @@ void TemplateMergerFiller::_readValidValues(
                     bool isParent = _isSkuParent(sku);
                     if (!isParent || !m_countryCode_langCode_fieldIdChildOnly[countryCodeTo][langCodeTo].contains(fieldId))
                     {
-                        m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId] = uniquePossibleValue;
+                        _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo], fieldId, uniquePossibleValue);
+
                     }
                 }
             }
             else
             {
-                for (auto it = AUTO_SELECT_PATTERN_POSSIBLE_VALUES.begin();
-                     it != AUTO_SELECT_PATTERN_POSSIBLE_VALUES.end(); ++it)
+                const auto &patternFieldIds = AUTO_SELECT_PATTERN_POSSIBLE_VALUES.uniqueKeys();
+                for (const auto &patternFieldId : patternFieldIds)
                 {
                     bool isParent = false;
-                    const auto &patternFieldId = it.key();
                     QString sku;
                     if (fieldId.contains(patternFieldId))
                     {
-                        bool found = false;
+                        const auto & listPossibleValues = AUTO_SELECT_PATTERN_POSSIBLE_VALUES.values(patternFieldId);
+                        bool found = true;
+                        if (countryCodeTo == "CA" && langCodeTo == "EN" && (patternFieldId.contains("outer") || patternFieldId.contains("sole") || patternFieldId.contains("footwear_size#1.width")))
+                        {
+                            int TEMP=10;++TEMP;
+                        }
                         QString lastFromValue;
-                        const auto &valuesEquivalent = it.value();
                         for (auto itSku = m_sku_countryCode_langCode_fieldId_origValue.begin();
                              itSku != m_sku_countryCode_langCode_fieldId_origValue.end(); ++itSku)
                         {
@@ -3560,29 +3693,41 @@ void TemplateMergerFiller::_readValidValues(
                             {
                                 if (m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom].contains(fieldId))
                                 {
-                                    const QString &fromValue = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][fieldId].toString();
-                                    lastFromValue = fromValue;
-                                    if (valuesEquivalent.contains(fromValue))
+                                    if (!m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo].contains(fieldId))
                                     {
-                                        for (const auto &possibleValue : possibleValues)
+                                        found = false;
+                                        const QString &fromValue = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][fieldId].toString();
+                                        lastFromValue = fromValue;
+                                        for (const auto &valuesEquivalent : listPossibleValues)
                                         {
-                                            if (valuesEquivalent.contains(possibleValue))
+                                            if (valuesEquivalent.contains(fromValue))
                                             {
-                                                m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId] = possibleValue;
-                                                found = true;
+                                                for (const auto &possibleValue : possibleValues)
+                                                {
+                                                    if (valuesEquivalent.contains(possibleValue))
+                                                    {
+                                                        _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo], fieldId, possibleValue);
+                                                        //m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo][fieldId] = possibleValue;
+                                                        found = true;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            if (found)
+                                            {
                                                 break;
                                             }
                                         }
                                     }
                                 }
                             }
-                            else
-                            {
-                                found = true; // not needed/Chield
-                            }
                         }
                         if (!found)
                         {
+                            qDebug() << "NOT FOUND";
+                            qDebug() << listPossibleValues;
+                            qDebug() << lastFromValue;
+                            qDebug() << "Add on of those:" << possibleValues;
                             countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo][fieldId] = possibleValues;
                         }
                         //Q_ASSERT(found); // Check fromValue / possibleValues and fieldId

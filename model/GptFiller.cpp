@@ -867,14 +867,15 @@ void GptFiller::_askFillingSelects(
                                     (aiDescription, customInstructions, fieldId, jsonSource);
                         }
                         ++m_nQueries;
-                        qDebug().noquote() << "\nQUESTION GptFiller::_askFillingSelects SELECTS:" << fieldId << "-" << question;
+                        qDebug().noquote() << "\nQUESTION GptFiller::_askFillingSelects SELECTS:"
+                                           << skuParent << "-" << fieldId << "-" << question;
                         OpenAi::instance()->askQuestion(
                                     question
                                     , skuParent
                                     , N_RETRY
                                     , "gpt-4.1-mini"
                                     , [this, skuParent, colorOrig, fieldId, countryCodesTo, langCodesTo](const QString &jsonReply) -> bool{
-                            qDebug().noquote() << "REPLY GptFiller::_askFillingSelects SELECT:" << fieldId << "-" << jsonReply;
+                            qDebug().noquote() << "REPLY GptFiller::_askFillingSelects SELECT:" << skuParent << "-" << fieldId << "-" << jsonReply;
                             QList<QSet<QString>> listPossibleValues;
                             for (int i=0; i<countryCodesTo.size(); ++i)
                             {

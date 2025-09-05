@@ -9,7 +9,6 @@
 
 #include "GptFiller.h"
 #include "SkuInfo.h"
-#include "PromptInfo.h"
 
 class TemplateMergerFiller
 {
@@ -161,7 +160,7 @@ private:
     int _getIndCol(const QHash<QString, int> &fieldId_index, const QStringList &possibleValues) const;
     int _getRowFieldId(Version version) const;
     void _recordValueAllVersion(QHash<QString, QVariant> &fieldId_value,
-                                const QString fieldId,
+                                const QString &fieldId,
                                 const QVariant &value);
     void _preFillExcelFiles(const QStringList &keywordFilePaths
                             , const QStringList &sourceFilePaths
