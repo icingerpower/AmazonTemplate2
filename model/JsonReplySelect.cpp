@@ -13,7 +13,8 @@ We always use the metric unit system when there is a choice. This is the descrip
 You need to select a value for the following field: %3
 Return your answer only as a single JSON object matching the following pattern (no extra keys, no comments, no prose):
 %4
-You will have to replace "values" by "value" and select only one value that match the previous details and keep everything else from the input json
+You will have to replace "values" by "value" and select only one value from values. Keep everything else from the input json.
+If values doesn't contain the right value, choose the closest from values. It is forbiden invent another value not included in values.
 Now produce the JSON.)"
 );
 

@@ -67,7 +67,7 @@ bool JsonReplyText::isJsonReplyCorrect(
             }
             if (fieldId.contains("color") || fieldId.contains("type") || fieldId.contains("pattern"))
             {
-                if (value.size() > 30)
+                if (value.size() > 40)
                 {
                     return false;
                 }

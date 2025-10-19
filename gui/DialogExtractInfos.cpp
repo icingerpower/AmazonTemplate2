@@ -19,6 +19,7 @@ DialogExtractInfos::DialogExtractInfos(
     ui->setupUi(this);
     ui->tableViewInfos->setModel(new TableInfoExtractor{ui->tableViewInfos});
     ui->tableViewInfos->horizontalHeader()->resizeSection(TableInfoExtractor::IND_TITLE, 300);
+    ui->buttonGenerateImageNames->hide();
     QDir dir{workingDir};
     m_workingDir = workingDir;
     const auto &fileInfos = dir.entryInfoList(
@@ -173,7 +174,7 @@ void DialogExtractInfos::generateImageNames()
     const auto &baseUrl = QInputDialog::getText(
                 this,
                 tr("Base url path"),
-                tr("Enter the base url image path"),
+                tr("Enter please the base url image path"),
                 QLineEdit::Normal,
                 "https://icinger.fr/cedricteam/images/");
     // TODO ask folder to retrieve the image name + add one column per image + trigger warning if images are not well named
@@ -186,7 +187,7 @@ void DialogExtractInfos::checkImageFileNames()
     QString settingKeyUrl = "DialogOpenConifg__checkImageFileNames_url";
     QString lastUrl = settings.value(
                 settingKeyUrl, "https://icinger.fr/cedricteam/images/").toString();
-    const auto &baseUrl = QInputDialog::getText(
+    auto baseUrl = QInputDialog::getText(
                 this,
                 tr("Base url path"),
                 tr("Enter the base url image path"),
@@ -194,7 +195,11 @@ void DialogExtractInfos::checkImageFileNames()
                 lastUrl);
     if (!baseUrl.isEmpty())
     {
-        settings.setValue(settingKeyUrl, lastUrl);
+        if (!baseUrl.endsWith("/"))
+        {
+            baseUrl += "/";
+        }
+        settings.setValue(settingKeyUrl, baseUrl);
         QString settingKey = "DialogOpenConifg__checkImageFileNames";
         QString lastDirPath = settings.value(
                     settingKey, QDir().absolutePath()).toString();

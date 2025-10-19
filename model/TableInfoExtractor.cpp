@@ -257,7 +257,6 @@ void TableInfoExtractor::generateImageNames(QString baseUrl)
 
 QStringList TableInfoExtractor::_getImageFileNames() const
 {
-    QStringList imageUrls;
     QString lastColor;
     QString lastSku;
     QStringList imageFileNames;
@@ -452,8 +451,11 @@ QString TableInfoExtractor::readAvailableImage(QString baseUrl, const QString &d
     const auto &dirImageFileNames = dir.entryList(
                 QStringList{"*.jpg"}, QDir::Files, QDir::Name);
 
+    QList<QStringList> imageFilePaths;
+    QStringList imageFilePathsString;
     for (int i=0; i<imageFileNames.size(); ++i)
     {
+        imageFilePaths << QStringList{};
         const auto &skuImageFileName = imageFileNames[i];
         if (fileNameFirst_allFileNames.contains(skuImageFileName))
         {
@@ -464,13 +466,18 @@ QString TableInfoExtractor::readAvailableImage(QString baseUrl, const QString &d
                 if (dirImageFileNames.contains(curImageFileName))
                 {
                     int imageColIndex = getColIndexImage(j);
+                    const auto &urlImage = baseUrl + curImageFileName;
                     m_listOfStringList[i][imageColIndex]
-                            = baseUrl + curImageFileName;
+                            = urlImage;
+                    imageFilePaths[i] << urlImage;
                 }
             }
+            imageFilePathsString << imageFilePaths[i].join("\t");
         }
     }
     emit dataChanged(index(0, 0), index(rowCount() - 1, columnCount() - 1));
+    auto *clipboard = QApplication::clipboard();
+    clipboard->setText(imageFilePathsString.join("\n"));
 
     QStringList wrongImageFileNames;
     for (const auto &dirImageFileName : dirImageFileNames)

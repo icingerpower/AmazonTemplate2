@@ -248,26 +248,29 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_CLOTH
         else if (targetGender == Gender::Male
                  && age_range_description == Age::Adult)
         {
+            int eu = 48; // set the EU men size (valid: 44,46,48,50,52,54,56,58,60)
+
             _list_countryCode_size = QList<QHash<QString, int>> {
-                {{{"FR", 36}
-                    , {"BE", 36}
-                    , {"ES", 36}
-                    , {"TR", 36}
-                    , {"DE", 36}
-                    , {"NL", 36}
-                    , {"SE", 36}
-                    , {"PL", 36}
-                    , {"IT", 36}
-                    , {"IE", 26} // Irland
-                    , {"UK", 26}
-                    , {"AU", 26}
-                    , {"COM", 26}
-                    , {"CA", 26}
-                    , {"JP", 28}
-                    , {"AE", 26}
-                    , {"MX", 26}
-                    , {"SA", 26}
-                    , {"SG", 26}
+                {{
+                    {"FR", eu},
+                    {"BE", eu},
+                    {"ES", eu},
+                    {"TR", eu},
+                    {"DE", eu},
+                    {"NL", eu},
+                    {"SE", eu},
+                    {"PL", eu},
+                    {"IT", eu},
+
+                    {"IE", eu - 10}, // Ireland (UK/US inch system)
+                    {"UK", eu - 10},
+                    {"AU", eu - 10},
+                    {"COM", eu - 10}, // US
+                    {"CA", eu - 10},
+                    {"AE", eu - 10},
+                    {"MX", eu - 10},
+                    {"SA", eu - 10},
+                    {"SG", eu - 10}
                 }}
             };
         }
@@ -299,6 +302,7 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_CLOTH
             }
         }
     }
+    Q_ASSERT(countryTo != "JP"); //Should map cm
     if (countryTo == "BE" && langTo == "FR")
     {
         if (origValue == "XL")
@@ -514,8 +518,12 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_NOT_AI{
     , "model_name"
     , "model_number#1.value"
     , "parent_child", "parentage_level#1.value"
+    , "shirt_size_to"
+    , "shirt_size#1.size_to"
     , "apparel_size_to"
     , "apparel_size#1.size_to"
+    , "shirt_size_to"
+    , "shirt_size#1.size_to"
     , "footwear_size"
     , "footwear_size#1.size"
     , "footwear_to_size"
@@ -573,6 +581,10 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_EXTRA_MANDATORY{
     , "apparel_height_type", "apparel_size#1.height_type"
     , "apparel_size_class", "apparel_size#1.size_class"
     , "apparel_size_system", "apparel_size#1.size_system"
+    , "shirt_body_type", "shirt_size#1.body_type"
+    , "shirt_height_type", "shirt_size#1.height_type"
+    , "shirt_size_class", "shirt_size#1.size_class"
+    , "shirt_size_system", "shirt_size#1.size_system"
     , "shapewear_body_type", "footwear_size#1.body_type"
     , "shapewear_height_type", "footwear_size#1.height_type"
     , "model_name", "model_name#1.value"
@@ -608,10 +620,13 @@ const QHash<QString, QSet<QString>> TemplateMergerFiller::PRODUCT_TYPE_FIELD_IDS
         , "closure_type", "closure#1.type#1.value"
         , "sleeve_type", "sleeve#1.type#1.value"
         , "neck_style", "neck#1.neck_style#1.value"
+        , "collar_style", "collar_style#1.value"
+        , "fit_type", "fit_type#1.value"
         //, "occasion_type", "occasion_type#1.value"
     };
     productType_extraFieldIds["robe"] = clotheFieldIds;
     productType_extraFieldIds["dress"] = clotheFieldIds;
+    productType_extraFieldIds["shirt"] = clotheFieldIds;
     QSet<QString> shoeFieldIds{
         "outer_material_type"
         , "outer#1.material#1.value"
@@ -698,6 +713,10 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_ALWAY_SAME_VALUE{
     , "update_delete", "::record_action"
     , "apparel_body_type", "apparel_size#1.body_type"
     , "apparel_height_type", "apparel_size#1.height_type"
+    , "shirt_size_class", "shirt_size#1.size_class"
+    , "shirt_size_system", "shirt_size#1.size_system"
+    , "shirt_body_type", "shirt_size#1.body_type"
+    , "shirt_height_type", "shirt_size#1.height_type"
     , "package_weight_unit_of_measure", "item_package_weight#1.unit"
     , "package_height_unit_of_measure", "item_package_dimensions#1.height.unit"
     , "package_width_unit_of_measure", "item_package_dimensions#1.width.unit"
@@ -752,6 +771,10 @@ const QHash<QString, TemplateMergerFiller::FuncFiller> TemplateMergerFiller::FIE
     , {"apparel_size#1.size", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
     , {"apparel_size_to", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
     , {"apparel_size#1.size_to", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
+    , {"shirt_size", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
+    , {"shirt_size#1.size", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
+    , {"shirt_size_to", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
+    , {"shirt_size#1.size_to", FUNC_FILLER_CONVERT_CLOTHE_SIZE}
     , {"footwear_size", FUNC_FILLER_CONVERT_SHOE_SIZE}
     , {"footwear_size#1.size", FUNC_FILLER_CONVERT_SHOE_SIZE}
     , {"footwear_to_size", FUNC_FILLER_CONVERT_SHOE_SIZE}
@@ -802,6 +825,8 @@ const QStringList TemplateMergerFiller::FIELD_IDS_COLOR_NAME{
 const QStringList TemplateMergerFiller::FIELD_IDS_SIZE{
     "apparel_size"
     , "apparel_size#1.size"
+    , "shirt_size"
+    , "shirt_size#1.size"
     , "footwear_size"
     , "footwear_size#1.size"
     , "shapewear_size"
@@ -821,6 +846,10 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "apparel_size#1.size"
     , "apparel_size_to"
     , "apparel_size#1.size_to"
+    , "shirt_size"
+    , "shirt_size#1.size"
+    , "shirt_size_to"
+    , "shirt_size#1.size_to"
     , "apparel_body_type"
     , "apparel_size#1.body_type"
     , "apparel_height_type"
@@ -976,6 +1005,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Vuxen"
                         , "Adulto"
                         , "Dla dorosłych"  // PL-pl
+                        , "Erwachsene" // DE
                     }
                     );
     }
@@ -1068,6 +1098,10 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "medium"  // Nl
                         , "mediano" // MX-es
                         , "Medium" // COM-en
+                        , "M"
+                        , "Normaal" // NL
+                        , "Orta"
+                        , "Media"
                     });
         pattern_possibleValues.insert(
                     key,
@@ -1082,6 +1116,9 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Schmal"  // DE-de
                         , "Estrecho" // MX-es
                         , "Mince" // CA-fr — closest to “étroit”; risk of mismatch ≈20%
+                        , "Smal"
+                        , "Dar"
+                        , "Stretta"
                     });
         for (const auto &key : {"fulfillment_availability#1.fulfillment_channel_code", "fulfillment_center_id"})
         {
@@ -1116,6 +1153,18 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Female" // CA-fr
                     , "Women" // COM-en
                     , "Femenino" // MX
+                    , "Féminin"
+                    , "Femmina" // MX
+                    , "Vrouwelijk"
+                    , "Kvinna"
+                    , "Weiblich"
+                    , "Damen"
+                    , "Donna"
+                    , "Dames"
+                    , "Kobiety"
+                    , "Żeńskie"
+                    , "Kvinnor"
+                    , "Kadın"
                 });
     pattern_possibleValues.insert(
                 "gender",
@@ -1124,8 +1173,18 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Men" // CA-en
                     , "Male" // CA-en
                     , "Homme" // CA-fr
-                    , "Men" // COM-en
                     , "Masculino" // MX
+                    , "Männlich"
+                    , "Masculin"
+                    , "Maschio"
+                    , "Mannelijk"
+                    , "Man"
+                    , "Herren"
+                    , "Mannen"
+                    , "Dla meżczyzn"
+                    , "Męskie"
+                    , "Män"
+                    , "Erkek"
                 });
 
     pattern_possibleValues.insert(
@@ -1160,6 +1219,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Synthétique"  // BE-fr, FR-fr
                         , "Sintetico"    // IT-it
                         , "Synthetik"    // DE-de
+                        , "Sentetik"    // TR
                     });
     }
     pattern_possibleValues.insert(
@@ -1193,6 +1253,9 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Synthetik"             // DE-de
                         , "Sintético"             // ES-es
                         , "Tworzywo syntetyczne"  // PL-pl
+                        , "Synthetisch"  // NL
+                        , "Syntet"  // SE
+                        , "Synthetic Resin"
                     });
         pattern_possibleValues.insert(
                     key,
@@ -1200,6 +1263,47 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         "Polyurethane (PU)" // CA-en, COM-en
                         , "Polyuréthane (PU)" // CA-fr
                         , "Poliuretano (PU)" // MX-es
+                        , "Polyurethan (PU)" // DE
+                        , "Polyuréthane" // FR
+                        , "Polyurethaan (PU)" // NL
+                        , "Poliuretan (PU)"
+                        , "Polyuretan (PU)"
+                        , "Poliüretan (PU)"
+                        , "polyurethane_pu"
+                    });
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "Ante" // ES-es
+                        , "Mocka" // SE-se
+                        , "Süet" // TR-tr
+                        , "Zamsz" // PL-pl
+                        , "Suede" // IE-en
+                        , "Suede" // UK-en
+                        , "Wildleder" // DE-de
+                        , "Suède" // NL-nl
+                        , "Pelle scamosciata" // IT-it
+                        , "Suède" // BE-fr
+                        , "Suède" // FR-fr
+                    });
+        pattern_possibleValues.insert(
+                    key,
+                    QSet<QString>{
+                        "Faux Suede" // UK-en
+                        , "Ante sintético" // ES-es
+                        , "Pelle scamosciata sintetica" // IT-it
+                        , "Konstmocka" // SE-se
+                        , "Faux Suede" // IE-en
+                        , "Faux suède" // CA-fr
+                        , "Faux Suede" // CA-en
+                        , "Suni Süet" // TR-tr
+                        , "Kunstsuède" // NL-nl
+                        , "Faux Suede" // COM-en
+                        , "Wildlederimitat" // DE-de
+                        , "Faux suède" // FR-fr
+                        , "Sztuczny zamsz" // PL-pl
+                        , "Ante sintético" // MX-es
+                        , "faux_suede" // BE-fr
                     });
     }
     for (const auto &key : {"package_height_unit_of_measure"
@@ -1218,10 +1322,14 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "centimeter"   // NL-nl, SE-se
                         , "centimeters"  // BE-fr
                         , "centymetry"   // PL-pl
+                        , "Centymetry"   // PL-pl
                         , "Centimètres"   // PL-pl
                         , "Centimetri" // IT-it
                         , "Zentimeter" // DE-de
                         , "Centímetros" // ES-es
+                        , "Centimeter" // NL-nl
+                        , "Santimetre"
+                        , "Centimetres"
                     });
     }
     for (const auto &key : {"package_weight", "item_package_weight#1.value"})
@@ -1237,6 +1345,8 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Gram"   // SE-se
                         , "grams"  // BE-fr
                         , "Grammes"
+                        , "Gramm"
+                        , "Grammi"
                     });
     }
 
@@ -1376,6 +1486,8 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Numeryczny" // PL-pl
                     , "Numero"     // IT-it
                     , "Numérica"   // MX-es
+                    , "Zakres liczbowy" // PL
+                    , "Numeriskt"   // SE
                 }
                 );
     pattern_possibleValues.insert(
@@ -1519,7 +1631,6 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     "SizeColor"
                     //, "Size"
                     , "color-size"
-                    , "STORLEK/FÄRG"
                     , "TAILLE/COULEUR"
                     , "MAAT/KLEUR"
                     , "SIZE/COLOR"
@@ -1533,6 +1644,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "TAMAÑO/COLOR"     // MX-es
                     , "Nazwa rozmiaru-Nazwa koloru"
                     , "KolorRozmiaru"
+                    , "STORLEK/FÄRG"
                 });
 
 
@@ -1584,6 +1696,8 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"generic_keywords", "generic_keyword#1.value"}
         , {"external_product_id", "amzn1.volt.ca.product_id_value"}
         , {"external_product_id_type", "amzn1.volt.ca.product_id_type"}
+        , {"shirt_size", "shirt_size#1.size"}
+        , {"shirt_size_to", "shirt_size#1.size_to"}
         , {"apparel_size", "apparel_size#1.size"}
         , {"apparel_size_to", "apparel_size#1.size_to"}
         , {"apparel_size_class", "apparel_size#1.size_class"}
@@ -1601,6 +1715,10 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"shapewear_size_system", "shapewear_size#1.size_system"}
         , {"shapewear_body_type", "shapewear_size#1.body_type"}
         , {"shapewear_height_type", "shapewear_size#1.height_type"}
+        , {"shirt_size_class", "shirt_size#1.size_class"}
+        , {"shirt_size_system", "shirt_size#1.size_system"}
+        , {"shirt_body_type", "shirt_size#1.body_type"}
+        , {"shirt_height_type", "shirt_size#1.height_type"}
         , {"relationship_type", "child_parent_sku_relationship#1.child_relationship_type"}
         , {"variation_theme", "variation_theme#1.name"}
         , {"package_weight", "item_package_weight#1.value"}
@@ -1688,6 +1806,10 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"footwear_age_group", "footwear_size#1.age_group"}
         , {"footwear_size", "footwear_size#1.width"}
         , {"footwear_gender", "footwear_size#1.gender"}
+        , {"platform_height_unit_of_measure", "footwear_platform_height#1.unit"} // I guessed platform_height_unit_of_measure
+        , {"platform_height", "footwear_platform_height#1.value"}
+        , {"lining_description", "lining_description#1.value"}
+
 
         , {"offering_can_be_gift_messaged", "gift_options#1.can_be_messaged"}
         , {"offering_can_be_giftwrapped", "gift_options#1.can_be_wrapped"}
@@ -1818,9 +1940,64 @@ TemplateMergerFiller::TYPE_COUNTRY_LANG_FIELD_ID_POSSIBLE_VALUES
             "Alfa"
             , "Numerisk"
 };
+    productType_countryCode_langCode_fieldId_possibleValues["shirt"]["FR"]["FR"]["neck#1.neck_style#1.value"]
+            = QSet<QString>{
+            "À capuche",
+            "À col haut",
+            "À une manche",
+            "Avec col",
+            "Cache coeur",
+            "Col asymétrique",
+            "Col bateau",
+            "Col bénitier",
+            "Col bijou",
+            "Col carmen",
+            "Col carré",
+            "Col châle",
+            "Col choker",
+            "Col cranté",
+            "Col fendu",
+            "Col keyhole",
+            "Col mao",
+            "Col marin",
+            "Col mock",
+            "Col noué",
+            "Col rond",
+            "Col roulé",
+            "Col V",
+            "Décolleté en coeur",
+            "Dos nu",
+            "Encolure dégagée",
+            "Henley"
+        };
+    productType_countryCode_langCode_fieldId_possibleValues["shirt"]["BE"]["FR"]["collar_style"]
+            = QSet<QString>{
+            "pajama_collar",
+                "hidden_button_down_collar",
+                "cutaway_collar",
+                "tab_collar",
+                "club_collar",
+                "point_collar",
+                "spear_collar",
+                "wingtip_collar",
+                "mandarin_collar",
+                "button_down_collar",
+                "extreme_cutaway_collar",
+                "spread_collar"
+            };
+
+    productType_countryCode_langCode_fieldId_possibleValues["shoes"]["BE"]["FR"]["shaft_height_unit_of_measure"]
+            = QSet<QString>{
+            "Centimètres"
+};
     productType_countryCode_langCode_fieldId_possibleValues["dress"]["SE"]["SE"]["apparel_size#1.size_class"]
             = QSet<QString>{
             "Alpha"
+            , "Numerisk"
+};
+    productType_countryCode_langCode_fieldId_possibleValues["shirt"]["SE"]["SE"]["shirt_size#1.size_class"]
+            = QSet<QString>{
+            "Alfa"
             , "Numerisk"
 };
     productType_countryCode_langCode_fieldId_possibleValues["boot"]["BE"]["FR"]["shaft_height_unit_of_measure"]
@@ -1888,11 +2065,12 @@ void TemplateMergerFiller::_recordValueAllVersion(
         }
     }
     else if (fieldId != "sole_material#1.value" && fieldId != "sole_material"
+             && !fieldId.contains("inner")
              && (fieldId.contains("material#1.value")
              || fieldId.contains("material_type")
              || (fieldId.contains("outer") && fieldId.contains("material"))))
     {
-        for (const auto &id : {"material#1.value", "outer_material_type", "outer_material_type1", "inner#1.material#1.value", "outer#1.material#1.value"})
+        for (const auto &id : {"material#1.value", "outer_material_type", "outer_material_type1", "outer#1.material#1.value"})
         {
             fieldId_value[id] = value;
         }
@@ -2110,7 +2288,8 @@ TemplateMergerFiller::TemplateMergerFiller(const QString &filePathFrom,
             }
         }
     }
-    m_age = UndefinedAge;
+    //m_age = UndefinedAge;
+    m_age = Age::Adult;
     m_gender = UndefinedGender;
     QDir workingDir{QFileInfo{filePathFrom}.dir()};
     m_workdingDirImages = workingDir.absoluteFilePath("images");
@@ -2520,7 +2699,7 @@ void TemplateMergerFiller:: _readSkus(QXlsx::Document &document,
                              || fieldId == "target_gender#1.value")
                     {
                         static QSet<QString> women{"Féminin", "Female", "Femme"};
-                        static QSet<QString> men{"Masculin", "Homme", "Male"};
+                        static QSet<QString> men{"Masculin", "Homme", "Male", "Männlich"};
                         static QSet<QString> unisex{"Unisexe"};
                         if (women.contains(valueString))
                         {
@@ -2853,10 +3032,13 @@ void TemplateMergerFiller::_checkMinimumValues(const QString &toFillFilePath)
             , "external_product_type"
             , "external_product_id_type"
             , "amzn1.volt.ca.product_id_type"
+            , "apparel_size#1.size"
             , "apparel_size_to"
             , "apparel_size#1.size_to"
+            , "shirt_size#1.size"
+            , "shirt_size_to"
+            , "shirt_size#1.size_to"
             , "footwear_size"
-            , "apparel_size#1.size"
             , "footwear_to_size"
             , "footwear_size#1.to_size"
             , "generic_keyword#1.value"
@@ -3684,6 +3866,8 @@ void TemplateMergerFiller::_readValidValues(
                             int TEMP=10;++TEMP;
                         }
                         QString lastFromValue;
+                        QString lastFieldId;
+                        QString lastSku;
                         for (auto itSku = m_sku_countryCode_langCode_fieldId_origValue.begin();
                              itSku != m_sku_countryCode_langCode_fieldId_origValue.end(); ++itSku)
                         {
@@ -3698,6 +3882,8 @@ void TemplateMergerFiller::_readValidValues(
                                         found = false;
                                         const QString &fromValue = m_sku_countryCode_langCode_fieldId_origValue[sku][countryCodeFrom][langCodeFrom][fieldId].toString();
                                         lastFromValue = fromValue;
+                                        lastFieldId = fieldId;
+                                        lastSku = sku;
                                         for (const auto &valuesEquivalent : listPossibleValues)
                                         {
                                             if (valuesEquivalent.contains(fromValue))
@@ -3726,8 +3912,12 @@ void TemplateMergerFiller::_readValidValues(
                         {
                             qDebug() << "NOT FOUND";
                             qDebug() << listPossibleValues;
-                            qDebug() << lastFromValue;
-                            qDebug() << "Add on of those:" << possibleValues;
+                            qDebug() << "lastFromValue:" << lastFromValue;
+                            qDebug() << "sku:" << lastSku;
+                            qDebug() << "patternFieldId:" << patternFieldId;
+                            qDebug() << "fieldId:" << fieldId;
+                            qDebug() << "lastFieldId:" << lastFieldId;
+                            qDebug() << "Add one of those:" << possibleValues;
                             countryCode_langCode_fieldId_possibleValues[countryCodeTo][langCodeTo][fieldId] = possibleValues;
                         }
                         //Q_ASSERT(found); // Check fromValue / possibleValues and fieldId
@@ -3856,6 +4046,7 @@ void TemplateMergerFiller::_selectTemplateSheet(QXlsx::Document &doc) const
             break;
         }
     }
+
     Q_ASSERT(sheetSelected);
 
     if (!sheetSelected)
@@ -4000,7 +4191,8 @@ int TemplateMergerFiller::_getIndColTitle(
     return _getIndCol(fieldId_index, possibleValues);
 }
 
-int TemplateMergerFiller::_getIndCol(const QHash<QString, int> &fieldId_index, const QStringList &possibleValues) const
+int TemplateMergerFiller::_getIndCol(
+        const QHash<QString, int> &fieldId_index, const QStringList &possibleValues) const
 {
     for (const auto &possibleSkuId : possibleValues)
     {
