@@ -59,6 +59,7 @@ public:
                                    const QHash<QString, QHash<QString, QHash<QString, QString>>> &skuPattern_countryCode_langCode_keywords,
                                    Gender targetGender,
                                    Age age_range_description,
+                                   const QString &productType,
                                    const QVariant &origValue)> FuncFiller;
     static const QHash<QString, FuncFiller> FIELD_IDS_FILLER_NO_SOURCES;
     static const QSet<QString> FIELD_IDS_NO_SOURCES;
