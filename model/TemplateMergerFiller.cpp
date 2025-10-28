@@ -593,8 +593,8 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_AI_BUT_REQUIRED_IN_FIRST{
 const QSet<QString> TemplateMergerFiller::FIELD_IDS_PUT_FIRST_VALUE{
     "feed_product_type"
     , "product_type#1.value"
-    , "fulfillment_center_id"
-    , "fulfillment_availability#1.fulfillment_channel_code"
+    //, "fulfillment_center_id"
+    //, "fulfillment_availability#1.fulfillment_channel_code"
     //, "recommended_browse_nodes"
     //, "recommended_browse_nodes#1.value"
 };
@@ -606,6 +606,8 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_EXTRA_MANDATORY{
     , "supplier_declared_dg_hz_regulation1", "supplier_declared_dg_hz_regulation#1.value"
     , "supplier_declared_material_regulation1", "supplier_declared_material_regulation1#1.value"
     , "product_description", "product_description#1.value"
+    , "fulfillment_center_id"
+    , "fulfillment_availability#1.fulfillment_channel_code"
     , "bullet_point1", "bullet_point#1.value"
     , "bullet_point2", "bullet_point#2.value"
     , "bullet_point3", "bullet_point#3.value"
@@ -643,11 +645,20 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_EXTRA_MANDATORY{
     , "style_name", "style#1.value"
     , "color_map", "color#1.standardized_values#1"
     , "lifecycle_supply_type"
+    , "generic_keywords"
+    , "generic_keyword#1.value"
 };
 
 const QHash<QString, QSet<QString>> TemplateMergerFiller::PRODUCT_TYPE_FIELD_IDS_EXTRA_MANDATORY
 = []() -> QHash<QString, QSet<QString>> {
     QHash<QString, QSet<QString>> productType_extraFieldIds;
+
+    QSet<QString> rugFieldIds{
+        "item_length_width#1.length.unit"
+        , "item_length_width#1.width.unit"
+        , "rug_form_type#1.value"
+    };
+    productType_extraFieldIds["rug"] = rugFieldIds;
     QSet<QString> clotheFieldIds{
         "special_size_type", "special_size_type#1.value"
         , "outer_material_type1", "outer_material_type", "outer#1.material#1.value"
@@ -3402,7 +3413,7 @@ void TemplateMergerFiller::_fillDataAutomatically()
                                 {
                                     const auto &filler = FIELD_IDS_FILLER[fieldId];
                                     if (origValue.isValid()
-                                            || fieldId.contains("keywords"))
+                                            || fieldId.contains("keyword"))
                                     {
                                         const auto &fillerValue = filler(sku,
                                                                          countryCodeFrom,
