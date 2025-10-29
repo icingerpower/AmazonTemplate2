@@ -419,7 +419,7 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_SHOE_
                     }
                     for (const auto &countryCode : groupUk)
                     {
-                        countrycode_size[countryCode] = curSizeEu;
+                        countrycode_size[countryCode] = curSizeUk;
                     }
                     for (const auto &countryCode : groupJp)
                     {
@@ -514,6 +514,7 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_NOT_AI{
     , "parent_sku"
     , "child_parent_sku_relationship#1.parent_sku"
 
+    /*
     , "item_display_length"
     , "item_display_dimensions#1.length.value"
     , "item_display_length_unit_of_measure"
@@ -542,6 +543,7 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_NOT_AI{
     , "number_of_boxes#1.value"
     //, "item_shape"
     //, "rug_form_type#1.value"
+    //*/
 
     , "item_display_length_unit_of_measure"
     , "item_length_width#1.length.unit"
@@ -647,6 +649,8 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_EXTRA_MANDATORY{
     , "lifecycle_supply_type"
     , "generic_keywords"
     , "generic_keyword#1.value"
+    , "special_feature"
+    , "special_feature#1.value"
 };
 
 const QHash<QString, QSet<QString>> TemplateMergerFiller::PRODUCT_TYPE_FIELD_IDS_EXTRA_MANDATORY
@@ -711,11 +715,19 @@ const QHash<QString, QSet<QString>> TemplateMergerFiller::PRODUCT_TYPE_FIELD_IDS
         , "shaft_height", "shaft#1.height#1.value"
         , "shaft_height_unit_of_measure", "shaft#1.height#1.unit"
         , "leather_type"
+        , "leather_type#1.value"
         , "occasion_type#1.value"
         , "occasion_type"
         , "closure#1.type#1.value"
         , "sandal_type#1.value"
         , "heel#1.type#1.value"
+        , "height_map#1.value"
+        , "strap_type"
+        , "strap_type#1.value"
+        , "lifestyle#1.value"
+        , "lifestyle"
+        , "sole_material#1.value"
+        , "height_map"
         , "height_map#1.value"
     };
     productType_extraFieldIds["boot"] = shoeFieldIds;
@@ -753,6 +765,33 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_PATTERN_REMOVE_AS_MANDATORY{
     , "footwear_to_size_unisex"
     , "footwear_width_unisex"
     , "footwear_gender_unisex"
+    , "item_display_length"
+    , "item_display_dimensions#1.length.value"
+    , "item_display_length_unit_of_measure"
+    , "item_display_dimensions#1.length.unit"
+    , "item_display_width"
+    , "item_display_dimensions#1.width.value"
+    , "item_display_width_unit_of_measure"
+    , "item_display_dimensions#1.width.unit"
+    , "item_display_height"
+    , "item_display_dimensions#1.height.value"
+    , "item_display_height_unit_of_measure"
+    , "item_display_dimensions#1.height.unit"
+    //, "item_length"
+    , "item_length_width#1.length.value"
+    //, "item_length_unit_of_measure"
+    , "item_length_width#1.length.unit"
+    //, "item_width"
+    , "item_length_width#1.width.value"
+    //, "item_width_unit_of_measure"
+    , "item_length_width#1.width.unit"
+    , "item_thickness_derived"
+    , "item_thickness#1.decimal_value"
+    , "item_thickness_unit_of_measure"
+    , "item_thickness#1.unit"
+    , "number_of_boxes"
+    , "number_of_boxes#1.value"
+
     //, "height_map"
 };
 
@@ -946,6 +985,7 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "sleeve_type"
     , "sleeve#1.type#1.value"
     , "leather_type"
+    , "leather_type#1.value"
     , "size_map"
     , "size_name"
     , "size#1.value"
@@ -1087,6 +1127,7 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "shaft_height_unit_of_measure", "shaft#1.height#1.unit"
     , "toe_style", "toe_style#1.value"
     , "leather_type"
+    , "leather_type#1.value"
     , "target_audience", "target_audience#1.value"
     , "supplier_package_type", "supplier_package_type#1.value"
     , "occasion_type#1.value"
@@ -1096,6 +1137,11 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "sole_material", "sole_material#1.value"
     , "heel#1.type#1.value"
     , "height_map#1.value"
+    , "height_map"
+    , "strap_type"
+    , "strap_type#1.value"
+    , "special_feature"
+    , "special_feature#1.value"
 };
 
 const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTERN_POSSIBLE_VALUES
@@ -1429,6 +1475,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
          , "item_package_dimensions#1.height.unit"
          , "package_width_unit_of_measure"
          , "item_package_dimensions#1.width.unit"
+         , "item_package_dimensions#1.length.unit"
          , "package_length_unit_of_measure"
          , "item_display_length_unit_of_measure"
          , "item_display_dimensions#1.length.unit"
@@ -1628,6 +1675,12 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Sintetico"          // IT-it
                     , "Synthétique"        // FR-fr
                     , "Synthetik"          // DE-de
+                    , "Caoutchouc synthétique"
+                    , "Synthetischer Gummi"
+                    , "Gomma sintetica"
+                    , "Synthetisch rubber"
+                    , "Syntetiskt gummi"
+                    , "Sentetik Kauçuk"
                 });
     pattern_possibleValues.insert(
                 "sole_material",
@@ -1802,11 +1855,11 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"manufacturer", "manufacturer#1.value"}
         , {"toe_style", "toe_style#1.value"}
         , {"toe", "toe"}
+        , {"leather_type", "leather_type#1.value"}
         , {"shaft_circumference", "shaft#1.circumference#1.value"}
         , {"shaft_circumference_unit_of_measure", "shaft#1.circumference#1.unit"}
         , {"shaft_height", "shaft#1.height#1.value"}
         , {"shaft_height_unit_of_measure", "shaft#1.height#1.unit"}
-        , {"leather_type", "leather_type"}
         , {"sole_material", "sole_material#1.value"}
         , {"collection_name", "collection#1.value"}
         , {"gpsr_safety_attestation", "gpsr_safety_attestation#1.value"}
@@ -2042,7 +2095,7 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
 
         , {"inner_material_type", "inner#1.material#1.value"}
         , {"sandal_type", "sandal_type#1.value"}
-        , {"height_map#1.value", "height_map#1.value"}
+        , {"height_map", "height_map#1.value"}
     };
     QHash<QString, QString> _mappingFieldId = _mappingFieldIdTemp;
     for (auto it = _mappingFieldIdTemp.begin();
@@ -2183,6 +2236,10 @@ TemplateMergerFiller::TYPE_COUNTRY_LANG_FIELD_ID_POSSIBLE_VALUES
     productType_countryCode_langCode_fieldId_possibleValues["boot"]["BE"]["FR"]["footwear_width"]
             = QSet<QString>{
             "Moyen", "Étroit", "Large"
+};
+    productType_countryCode_langCode_fieldId_possibleValues["shoes"]["BE"]["FR"]["footwear_width"]
+            = QSet<QString>{
+            "M", "Mince", "Large"
 };
     productType_countryCode_langCode_fieldId_possibleValues["shoes"]["MX"]["ES"]["footwear_size#1.size_class"]
             = QSet<QString>{

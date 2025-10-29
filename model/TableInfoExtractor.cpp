@@ -512,7 +512,10 @@ QString TableInfoExtractor::readAvailableImage(QString baseUrl, const QString &d
         for (auto it = missingImageFileNames.begin();
              it != missingImageFileNames.end(); ++it)
         {
-            message += "\n" + it.key() + " (" + QString::number(it.value()) + "/5 images found)";
+            if (it.key().size() > 4)
+            {
+                message += "\n" + it.key() + " (" + QString::number(it.value()) + "/5 images found)";
+            }
         }
     }
     if (wrongImageFileNames.size() > 0)

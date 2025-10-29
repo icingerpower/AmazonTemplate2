@@ -671,6 +671,10 @@ void GptFiller::askFillingSelectsAndTexts(
     {
         const auto &sku = itSku.key();
         bool isParent = m_skuParent_skus.contains(sku);
+        if (!isParent)
+        {
+            Q_ASSERT(!sku.startsWith("P-"));
+        }
         const auto &skuParent = isParent ? sku : (*m_sku_infos)[sku].skuParent;
         auto colorOrig = isParent ? QString{} :(*m_sku_infos)[sku].colorOrig;
         if (!skuParents_colorsDone[skuParent].contains(colorOrig))
@@ -872,7 +876,7 @@ void GptFiller::_askFillingSelects(
                         OpenAi::instance()->askQuestion(
                                     question
                                     , skuParent
-                                    , N_RETRY
+                                    , N_RETRY * 2
                                     , "gpt-4.1-mini"
                                     , [this, skuParent, colorOrig, fieldId, countryCodesTo, langCodesTo](const QString &jsonReply) -> bool{
                             qDebug().noquote() << "REPLY GptFiller::_askFillingSelects SELECT:" << skuParent << "-" << fieldId << "-" << jsonReply;
