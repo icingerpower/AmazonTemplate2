@@ -1230,7 +1230,15 @@ QHash<QString, QHash<QString, QHash<QString, QString> > > GptFiller::_get_sku_co
                                             sizeTitle += infos.sizeOrig + "=";
                                         }
                                     }
-                                    sizeTitle += countryCode + "-" + fieldId_value[fieldIdSize].toString();
+                                    const auto &curSize = fieldId_value[fieldIdSize].toString();
+                                    if (!sizeTitle.endsWith(curSize + "="))
+                                    {
+                                        sizeTitle += countryCode + "-" + curSize;
+                                    }
+                                    else
+                                    {
+                                        sizeTitle.removeAt(sizeTitle.size()-1);
+                                    }
                                     varElements << sizeTitle;
                                     break;
                                 }

@@ -14,17 +14,18 @@
 #include "TemplateMergerFiller.h"
 
 const QStringList TemplateMergerFiller::SHEETS_TEMPLATE{
-        "Template"
-        , "Vorlage"
-        , "Modèle"
-        , "Sjabloon"
-        , "Mall"
-        , "Szablon"
-        , "Plantilla"
-        , "Modello"
-        , "Şablon"
-        , "Gabarit"
-    };
+    "Template"
+    , "Vorlage"
+    , "Modèle"
+    , "Sjabloon"
+    , "Mall"
+    , "Szablon"
+    , "Plantilla"
+    , "Modello"
+    , "Şablon"
+    , "Gabarit"
+    , "テンプレート"
+};
 
 const QStringList TemplateMergerFiller::SHEETS_VALID_VALUES{
     "Valeurs valides"
@@ -36,6 +37,7 @@ const QStringList TemplateMergerFiller::SHEETS_VALID_VALUES{
     , "Valores válidos"
     , "Poprawne wartości"
     , "Geçerli Değerler"
+    , "推奨値"
 };
 
 const QHash<QString, QString> TemplateMergerFiller::SHEETS_MANDATORY{
@@ -48,6 +50,7 @@ const QHash<QString, QString> TemplateMergerFiller::SHEETS_MANDATORY{
     , {"Veri Tanımları", "Zorunlu"}
     , {"Definicje danych", "Wymagane"}
     , {"Definiciones de datos", "Obligatorio"}
+    , {"データ定義", "必須"}
 };
 
 TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_PRICE
@@ -704,6 +707,8 @@ const QHash<QString, QSet<QString>> TemplateMergerFiller::PRODUCT_TYPE_FIELD_IDS
         , "inner#1.material#1.value"
         , "sole_material"
         , "sole_material#1.value"
+        , "insole_material"
+        , "insole#1.material#1.value"
         , "style_name", "style#1.value"
         , "target_gender", "target_gender#1.value"
         , "age_range_description", "age_range_description#1.value"
@@ -726,7 +731,6 @@ const QHash<QString, QSet<QString>> TemplateMergerFiller::PRODUCT_TYPE_FIELD_IDS
         , "strap_type#1.value"
         , "lifestyle#1.value"
         , "lifestyle"
-        , "sole_material#1.value"
         , "height_map"
         , "height_map#1.value"
     };
@@ -1135,6 +1139,8 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     , "closure#1.type#1.value"
     , "sandal_type#1.value"
     , "sole_material", "sole_material#1.value"
+    , "insole_material"
+    , "insole#1.material#1.value"
     , "heel#1.type#1.value"
     , "height_map#1.value"
     , "height_map"
@@ -1169,6 +1175,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Adulto"
                         , "Dla dorosłych"  // PL-pl
                         , "Erwachsene" // DE
+                        , "大人"
                     }
                     );
     }
@@ -1182,6 +1189,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Yok hayır"
                     , "Nein"   // DE-de
                     , "Nie"    // PL-pl
+                    , "いいえ" // JP
                 });
 
 
@@ -1265,6 +1273,9 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Normaal" // NL
                         , "Orta"
                         , "Media"
+                        , "M (medium)"
+                        , "Średnia"
+                        , "Medel"
                     });
         pattern_possibleValues.insert(
                     key,
@@ -1282,18 +1293,10 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Smal"
                         , "Dar"
                         , "Stretta"
+                        , "狭い"
+                        , "Wąskie"
+                        , "Smal"
                     });
-        for (const auto &key : {"fulfillment_availability#1.fulfillment_channel_code", "fulfillment_center_id"})
-        {
-            pattern_possibleValues.insert(
-                        key,
-                        QSet<QString>{
-                            "AMAZON_NA"
-                            , "AMAZON_EU"
-                            , "AMAZON_JP"
-                            , "AMAZON_AU"
-                        });
-        }
         pattern_possibleValues.insert(
                     key,
                     QSet<QString>{
@@ -1305,8 +1308,23 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Large"    // FR-fr, BE-fr
                         , "Larga"    // IT-it
                         , "Weit"     // DE-de
+                        , "W"     // DE-de
+                        , "ワイド"
+                        , "Szerokie"
+                        , "Bred"
                     });
     }
+        for (const auto &key : {"fulfillment_availability#1.fulfillment_channel_code", "fulfillment_center_id"})
+        {
+            pattern_possibleValues.insert(
+                        key,
+                        QSet<QString>{
+                            "AMAZON_NA"
+                            , "AMAZON_EU"
+                            , "AMAZON_JP"
+                            , "AMAZON_AU"
+                        });
+        }
     pattern_possibleValues.insert(
                 "gender",
                 QSet<QString>{
@@ -1328,6 +1346,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Żeńskie"
                     , "Kvinnor"
                     , "Kadın"
+                    , "女性"
                 });
     pattern_possibleValues.insert(
                 "gender",
@@ -1348,6 +1367,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Męskie"
                     , "Män"
                     , "Erkek"
+                    , "男性"
                 });
 
     pattern_possibleValues.insert(
@@ -1383,8 +1403,23 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Sintetico"    // IT-it
                         , "Synthetik"    // DE-de
                         , "Sentetik"    // TR
+                        , "フェイクレザー" // JP ≈70%
                     });
     }
+
+    pattern_possibleValues.insert(
+    "insole#1.material#1.value",
+    QSet<QString>{
+        "Ethylenvinylacetat"                 // DE-de
+        , "Etilvinilacetato"                 // MX-es, ES-es
+        , "エチレン酢酸ビニル"              // JP-jp
+        , "Ethylene Vinyl Acetate"           // CA-en, COM-en, UK-en; also used for BE-fr & FR-fr although no list given (P(same enum) ≈ 0.6)
+        , "Etylenvinylacetat"                // SE-se
+        , "Ethyleenvinylacetaat (EVA)"       // BE-nl
+        , "Etilene vinil acetato (EVA)"      // IT-it
+        , "Kopolimer etylenu i octanu winylu (EVA)" // PL-pl
+    });
+
     pattern_possibleValues.insert(
                 "leather_type",
                 QSet<QString>{
@@ -1396,6 +1431,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Artificiell"      // SE-se
                     , "Kunstleder"       // DE-de
                     , "Sztuczna skóra"   // PL-pl → closest guess (70% chance wrong)
+                    , "フェイクレザー" // JP ≈80%
                 });
 
     pattern_possibleValues.insert(
@@ -1403,6 +1439,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                 QSet<QString>{
                     "Year Round Replenishable" // SE-se, NL-nl, PL-pl, ES-es, IT-it, FR-fr, DE-de, UK-en
                     , "Rechargeable toute l'année" // BE-fr
+                    , "通年" // JP ≈60%
                 });
     for (const auto &key : {"outer_material_type", "outer#1.material#1.value"})
     {
@@ -1419,6 +1456,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Synthetisch"  // NL
                         , "Syntet"  // SE
                         , "Synthetic Resin"
+                        , "合成樹脂" // ≈65%
                     });
         pattern_possibleValues.insert(
                     key,
@@ -1433,6 +1471,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Polyuretan (PU)"
                         , "Poliüretan (PU)"
                         , "polyurethane_pu"
+                        , "ポリウレタン (PU)" // JP from 表地の素材
                     });
         pattern_possibleValues.insert(
                     key,
@@ -1448,6 +1487,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Pelle scamosciata" // IT-it
                         , "Suède" // BE-fr
                         , "Suède" // FR-fr
+                        , "スエード" // JP
                     });
         pattern_possibleValues.insert(
                     key,
@@ -1467,6 +1507,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Sztuczny zamsz" // PL-pl
                         , "Ante sintético" // MX-es
                         , "faux_suede" // BE-fr
+                        , "フェイクスエード" // JP
                     });
     }
 
@@ -1503,6 +1544,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Centimeter" // NL-nl
                         , "Santimetre"
                         , "Centimetres"
+                        , "センチメートル"
                     });
     }
     for (const auto &key : {"package_weight", "item_package_weight#1.value"})
@@ -1520,6 +1562,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Grammes"
                         , "Gramm"
                         , "Grammi"
+                        , "グラム" // JP
                     });
     }
 
@@ -1541,6 +1584,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Bambino"   // IT-it
                         , "Niños"     // MX-es
                         , "child"     // BE-nl / BE-fr
+                        , "子供" // JP
                     });
         pattern_possibleValues.insert(
                     key,
@@ -1560,6 +1604,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Articolo parent"  // IT-it
                         , "Principal."       // MX-es (note the dot)
                         , "parent"           // BE-nl / BE-fr (lowercase)
+                        , "親" // JP
                     });
     }
     for (const auto &key : {"shaft_height_unit_of_measure", "shaft#1.height#1.unit"})
@@ -1570,6 +1615,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         "centimeter" // SE-se, NL-nl
                         , "CM" // UK-en, FR-fr, IT-it, DE-de, ES-es; COM-en, IE-en, PL-pl → closest guess (30% chance wrong)
                         , "centimeters" // BE-fr
+                        , "センチメートル"
                     });
     }
     for (const auto &key : {"shaft#1.circumference#1.unit", "shaft_circumference_unit_of_measure"})
@@ -1585,6 +1631,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Centimetri" // IT-it
                         , "Zentimeter" // DE-de
                         , "Centímetros" // ES-es
+                        , "センチメートル"
                     });
     }
     for (const auto &key : {"shaft#1.height#1.value", "shaft_height"})
@@ -1643,6 +1690,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Alpha/lettres" // FR-fr: suggested (≈20% wrong)
                     , "Letras" // ES-es
                     , "Testo"  // IT-it
+                    , "アルファベット" // JP
                 }
                 );
     pattern_possibleValues.insert(
@@ -1661,6 +1709,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Numérica"   // MX-es
                     , "Zakres liczbowy" // PL
                     , "Numeriskt"   // SE
+                    , "数値 (numeric)" // JP
                 }
                 );
     pattern_possibleValues.insert(
@@ -1681,6 +1730,8 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Synthetisch rubber"
                     , "Syntetiskt gummi"
                     , "Sentetik Kauçuk"
+                    , "Synthetischer Gummi"
+                    , "合成ゴム" // JP ≈85%
                 });
     pattern_possibleValues.insert(
                 "sole_material",
@@ -1688,7 +1739,21 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     "Synthetic Rubber" // CA-en, COM-en
                     , "Caoutchouc synthétique" // CA-fr
                     , "Corcho sintético" // MX-es
+                    , "合成ゴム" // JP
+                    , "Synthetischer Gummi"
                 });
+    pattern_possibleValues.insert(
+                "sole_material",
+                QSet<QString>{
+                    "Thermoplastische Elastomere"      // DE-de
+                    , "Elastómeros termoplásticos"     // MX-es, ES-es
+                    , "熱可塑性エラストマー"           // JP-jp
+                    , "Thermoplastic Elastomers"       // CA-en, COM-en, UK-en
+                    , "Termoplastiska elastomerer"     // SE-se
+                    , "TPE"                            // BE-nl, IT-it, PL-pl
+                    , "Élastomère thermoplastique"     // BE-fr, FR-fr
+                });
+
     /*
     pattern_possibleValues.insert(
                 "sole_material",
@@ -1717,6 +1782,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     "Non applicable",       // CA-fr, BE-fr
                     "Uygun Değil",          // TR-tr
                     "Niet van toepassing"   // NL-nl, BE-nl
+                    //, "該当なし" //JP 75%
                 }
                 );
 
@@ -1731,6 +1797,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     "Nicht zutreffend",    // DE-de, NL-nl
                     "Niet van toepassing", // BE-nl — suggested (no list); ~70%
                     "No aplicable"         // ES-es
+                    //, "該当なし" // JP ≈75%
                 }
                 );
     pattern_possibleValues.insert(
@@ -1740,11 +1807,19 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Rund tå" // SE-se
                     , "Ronde Teen" // NL-nl
                     , "Punta redonda"// ES-es
+                    , "Puntera redonda"// ES-es
                     , "Nosek okrągły"// PL-pl
                     , "round_toe" // BE-fr
                     , "Punta rotonda"// IT-it
                     , "Bout Rond" // FR-fr
                     , "Rundzehe" // DE-de
+                    , "Runder Zeh"
+                    , "Runder Zeh"      // DE-de
+                    , "ラウンドトゥ"    // JP-jp
+                    , "Nosek okrągły"   // PL-pl
+                    , "Punta rotonda"   // IT-it
+                    , "Bout rond"       // FR-fr, BE-fr
+                    , "Ronde teen"      // BE-nl
                 });
     pattern_possibleValues.insert(
                 "toe_style",
@@ -1753,11 +1828,19 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Öppen tå"     // SE-se
                     , "Open teen"    // NL-nl
                     , "Punta abierta"// ES-es
+                    , "Puntera abierta"
                     , "Nosek odkryty"// PL-pl
                     , "open_toe"     // BE-fr
                     , "Punta aperta" // IT-it
                     , "Bout Ouvert"  // FR-fr
                     , "Offen"        // DE-de
+                    , "Offene Kappe"
+                    , "Offene Kappe"   // DE-de
+                    , "オープントゥ"   // JP-jp
+                    , "Odkryty palec"  // PL-pl
+                    , "Punta aperta"   // IT-it
+                    , "Bout ouvert"    // FR-fr, BE-fr
+                    , "Open teen"      // BE-nl
                 });
     pattern_possibleValues.insert(
                 "toe_style",
@@ -1766,11 +1849,18 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Spetsad tå" // SE-se
                     , "Puntige teen" // NL-nl
                     , "De punta"   // ES-es
+                    , "Puntera en punta"   // ES-es
                     , "W szpic"    // PL-pl
                     , "pointed_toe"// BE-fr
                     , "a punta"    // IT-it
                     , "Bout Pointu"// FR-fr
                     , "Spitzzehe"  // DE-de
+                    , "Spitzer Zeh"
+                    , "ポインテッドトゥ" // confidence ≈90%
+                    , "Spitzer Zeh"      // DE-de
+                    , "Spetsig tå"       // SE-se
+                    , "A punta"          // IT-it
+                    , "Bout pointu"      // FR-fr, BE-fr
                 });
 
 
@@ -1780,9 +1870,9 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
         pattern_possibleValues.insert(
                     key,
                     QSet<QString>{
-                        "Aanmaken of vervangen (volledige update)"
+                        "Create or Replace (Full Update)"
+                        , "Aanmaken of vervangen (volledige update)"
                         , "Skapa eller ersätt (fullständig uppdatering)"
-                        , "Create or Replace (Full Update)"
                         , "Créer ou remplacer (actualisation complète)"
                         , "Erstellen oder Ersetzen (Vollständige Aktualisierung)"
                         , "Actualisation"
@@ -1801,6 +1891,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Crea o sostituisci (aggiornamento completo)"  // IT-it
                         , "Créer ou remplacer (mise à jour complète)"    // CA-fr
                         , "Crear o reemplazar (actualización completa)"  // MX-es
+                        , "作成または置換 (完全更新)" // JP
                     });
     }
 
@@ -1835,6 +1926,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "KolorRozmiaru"
                     , "STORLEK/FÄRG"
                     , "FÄRG/STORLEK"
+                    , "サイズ/色" // JP
                 });
 
 
@@ -1861,6 +1953,8 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"shaft_height", "shaft#1.height#1.value"}
         , {"shaft_height_unit_of_measure", "shaft#1.height#1.unit"}
         , {"sole_material", "sole_material#1.value"}
+        , {"insole_material", "insole#1.material#1.value"}
+        , {"seasons", "seasons#1.value"}
         , {"collection_name", "collection#1.value"}
         , {"gpsr_safety_attestation", "gpsr_safety_attestation#1.value"}
         , {"offering_start_date", "purchasable_offer#1.start_at.value"}
@@ -2006,7 +2100,7 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"merchant_shipping_group_name", "merchant_shipping_group#1.value"}
 
         , {"fabric_type", "fabric_type#1.value"}
-        , {"size_name", "footwear_size#1.size"}
+        //, {"size_name", "footwear_size#1.size"}
         , {"generic_keywords", "generic_keyword#1.value"}
         //, {"generic_keywords", "target_audience_keyword#1.value"}
         , {"style_name", "style#1.value"}
@@ -2014,7 +2108,7 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"target_audience_keyword", "target_audience_keyword#1.value"}
 
         , {"footwear_age_group", "footwear_size#1.age_group"}
-        , {"footwear_size", "footwear_size#1.width"}
+        , {"footwear_size", "footwear_size#1.size"}
         , {"footwear_gender", "footwear_size#1.gender"}
         , {"platform_height_unit_of_measure", "footwear_platform_height#1.unit"} // I guessed platform_height_unit_of_measure
         , {"platform_height", "footwear_platform_height#1.value"}
@@ -2278,7 +2372,8 @@ void TemplateMergerFiller::_recordValueAllVersion(
             fieldId_value[id] = value;
         }
     }
-    else if (fieldId != "sole_material#1.value" && fieldId != "sole_material"
+    else if (fieldId != "insole#1.material#1.value" && fieldId != "insole_material"
+             && fieldId != "sole_material#1.value" && fieldId != "sole_material"
              && !fieldId.contains("inner")
              && (fieldId.contains("material#1.value")
              || fieldId.contains("material_type")
@@ -2399,7 +2494,7 @@ void TemplateMergerFiller::_preFillTitles()
                 {
                     const auto &langCode = itLangCode.key();
                     auto itFieldId = itLangCode.value().constFind("item_name");
-                    if (itFieldId != itLangCode.value().end())
+                    if (itFieldId != itLangCode.value().cend())
                     {
                         const auto &title = itFieldId.value().toString();
                         skuParent_langCode_title[sku][langCode] = title;
@@ -2808,7 +2903,8 @@ void TemplateMergerFiller:: _readSkus(QXlsx::Document &document,
             auto cell = document.cellAt(i+1, indCol + 1);
             if (cell)
             {
-                if (!MAPPING_FIELD_ID.contains(fieldId) && !missingFieldIdsSet.contains(fieldId))
+                auto val = cell->value().toString();
+                if (!val.isEmpty() && !MAPPING_FIELD_ID.contains(fieldId) && !missingFieldIdsSet.contains(fieldId))
                 {
                     missingFieldIdsSet.insert(fieldId);
                 }
@@ -4081,10 +4177,6 @@ void TemplateMergerFiller::_readValidValues(
                     {
                         const auto & listPossibleValues = AUTO_SELECT_PATTERN_POSSIBLE_VALUES.values(patternFieldId);
                         bool found = true;
-                        if (countryCodeTo == "CA" && langCodeTo == "EN" && (patternFieldId.contains("outer") || patternFieldId.contains("sole") || patternFieldId.contains("footwear_size#1.width")))
-                        {
-                            int TEMP=10;++TEMP;
-                        }
                         QString lastFromValue;
                         QString lastFieldId;
                         QString lastSku;

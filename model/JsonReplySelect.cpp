@@ -14,7 +14,7 @@ You need to select a value for the following field: %3
 Return your answer only as a single JSON object matching the following pattern (no extra keys, no comments, no prose):
 %4
 You will have to replace "values" by "value" and select only one value from values. Keep everything else from the input json.
-If values doesn't contain the right value, choose the closest from values. It is forbiden invent another value not included in values.
+If values doesn't contain the right value, choose the closest from values (important: recopy selected value respecting case and don't turn lower case into upper case or opposite). It is forbiden invent another value not included in values.
 Now produce the JSON.)"
 );
 
