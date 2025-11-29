@@ -155,6 +155,10 @@ void MainWindow::_connectslots()
             &QPushButton::clicked,
             this,
             &MainWindow::viewFormatExtraInfosGpt);
+    connect(ui->buttonGenAttributes,
+            &QPushButton::clicked,
+            this,
+            &MainWindow::genAndDisplayAttributes);
     connect(ui->buttonClearPreviousChatGptReplies,
             &QPushButton::clicked,
             this,
@@ -204,6 +208,21 @@ void MainWindow::_enableGenerateButtonIfValid()
 
 void MainWindow::generate()
 {
+    const auto &extraInfos = ui->textEditExtraInfos->toPlainText();
+    if (extraInfos.trimmed().isEmpty())
+    {
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            this,                                           // parent
+            tr("Confirmation"),                             // title
+            tr("No custom instructions.\nDo you want to continue?"),
+            QMessageBox::Yes | QMessageBox::No,             // buttons
+            QMessageBox::No                                 // default button
+        );
+
+        if (reply == QMessageBox::No) {
+            return;
+        }
+    }
     _setGenerateButtonsEnabled(false);
     _createTemplateMergerFiller();
     try
@@ -535,4 +554,31 @@ void MainWindow::viewFormatExtraInfosGpt()
         tr("Custom instructions for every products\n"
            "[SKUSTART1,SKUSTART2]\nCustom instructions for products that include the skus\n"
            "[SKUSTART3,SKUSTART4]\nCustom instructions for products that include the skus"));
+}
+
+void MainWindow::genAndDisplayAttributes()
+{
+    // For each parent, it extract the common SKU code (just after P- and before the next -. For instance P-CJZP1145291-BHEELS will led to
+    // It will write [CJZP1145291].
+    // Then below, it will add some informations hard to guess from images.
+    // For each information availaible in TemplateMergerFiller::m_sku_countryCode_langCode_fieldId_origValue
+    // if the attribute is in QSet<QString> TemplateMergerFiller::FIELD_IDS_CUSTOM_INSTRUCTIONS
+    // it adds idAttr: value
+    // if heels height, it adds addAttr : value CM (XXX inches)
+    _createTemplateMergerFiller();
+    const QString &body = m_templateMergerFiller->getCustomAttributesText();
+
+    if (body.trimmed().isEmpty())
+    {
+        QMessageBox::information(
+            this,
+            tr("Product attributes"),
+            tr("No parent attributes found in the main input XLSX file."));
+        return;
+    }
+
+    QMessageBox::information(
+        this,
+        tr("Product attributes"),
+        body);
 }

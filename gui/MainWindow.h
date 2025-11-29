@@ -30,6 +30,7 @@ public slots:
     void browseSourceMain();
     void extractProductInfos();
     void viewFormatExtraInfosGpt();
+    void genAndDisplayAttributes();
     void generate();
     void generateAiDescOnly();
     void reviewAiDesc();

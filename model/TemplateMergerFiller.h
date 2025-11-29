@@ -28,6 +28,8 @@ public:
     static const QStringList FIELD_IDS_COLOR_NAME;
     static const QStringList FIELD_IDS_SIZE;
     static const QSet<QString> FIELD_IDS_CHILD_ONLY;
+    static const QSet<QString> FIELD_IDS_CUSTOM_INSTRUCTIONS; // If those have value, we add them in the custom instructions
+
     static const QMultiHash<QString, QSet<QString>> AUTO_SELECT_PATTERN_POSSIBLE_VALUES;
     static const QHash<QString, QString> MAPPING_FIELD_ID;
     static const QHash<QString, QHash<QString, QSet<QString>>> COUNTRY_LANG_FIELD_ID_TO_REMOVE;
@@ -105,13 +107,14 @@ public:
     void initGptFiller();
 
     const QHash<QString, QHash<QString, QHash<QString, QStringList> > > &countryCode_langCode_fieldId_possibleValues() const;
+    QString getCustomAttributesText();
 
 private:
     Version _getDocumentVersion(QXlsx::Document &document) const;
     void _readParentSkus(QXlsx::Document &document,
                   const QString &countryCode,
                   const QString &langCode,
-                  QMultiHash<QString, QString> &skuParent_skus);
+                  QMultiHash<QString, QString> &skuParent_skus) const;
     void _readSkus(QXlsx::Document &document,
                   const QString &countryCode,
                   const QString &langCode,

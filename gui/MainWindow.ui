@@ -98,6 +98,13 @@
          </widget>
         </item>
         <item>
+         <widget class="QPushButton" name="buttonGenAttributes">
+          <property name="text">
+           <string>Generate attributes infos</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QPushButton" name="buttonViewFormatExtraInfos">
           <property name="text">
            <string>View format</string>

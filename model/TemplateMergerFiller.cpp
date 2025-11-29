@@ -91,11 +91,14 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_PRICE
     }
     double priceEur = price / country_rate[countryFrom];
     double newPrice = priceEur * country_rate[countryTo];
+    /*
     if (qAbs(priceEur - newPrice) > 0.0001)
     {
         return std::round(newPrice - 0.99) + 0.99;
     }
     return newPrice;
+    //*/
+    return std::round(newPrice - 0.99) + 0.99;
 };
 
 TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_PUT_KEYWORDS
@@ -481,7 +484,7 @@ TemplateMergerFiller::FuncFiller TemplateMergerFiller::FUNC_FILLER_CONVERT_SHOE_
                      && countryCode_size.contains(countryFrom));
             if (qAbs(countryCode_size[countryFrom] - num) < 0.0001)
             {
-                if (countryTo == "MX")
+                if (countryTo == "MX" || countryTo == "JP")
                 {
                     QString sizeCm{QString::number(countryCode_size[countryTo])};
                     if (sizeCm.contains("."))
@@ -516,6 +519,7 @@ const QSet<QString> TemplateMergerFiller::FIELD_IDS_NOT_AI{
     , "manufacturer#1.value"
     , "parent_sku"
     , "child_parent_sku_relationship#1.parent_sku"
+    , "purchasable_offer#1.our_price#1.schedule#1.value_with_tax"
 
     /*
     , "item_display_length"
@@ -967,6 +971,23 @@ const QStringList TemplateMergerFiller::FIELD_IDS_SIZE{
     , "size#1.value"
 };
 
+const QSet<QString> TemplateMergerFiller::FIELD_IDS_CUSTOM_INSTRUCTIONS{
+    "special_feature#1.value"
+    , "lining_description#1.value"
+    , "sole_material#1.value"
+    , "heel#1.height#1.decimal_value" // CM to also convert in inches
+    , "footwear_platform_height#1.value" // CM to also convert in inches
+    , "outer#1.value"
+    , "insole#1.material#1.value"
+    , "material#1.value"
+    , "item_display_dimensions#1.height.value" // CM to also convert in inches
+    , "item_display_dimensions#1.length.value" // CM to also convert in inches
+    , "item_display_dimensions#1.width.value" // CM to also convert in inches
+    , "fabric_type#1.value"
+    , "inner#1.material#1.value"
+    , "outer#1.material#1.value"
+};
+
 const QSet<QString> TemplateMergerFiller::FIELD_IDS_CHILD_ONLY{
     "apparel_size_class"
     , "apparel_size#1.size_class"
@@ -1276,6 +1297,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "M (medium)"
                         , "Średnia"
                         , "Medel"
+                        // , "B" // Mx / JP
                     });
         pattern_possibleValues.insert(
                     key,
@@ -1296,6 +1318,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "狭い"
                         , "Wąskie"
                         , "Smal"
+                        // , "2A" // Mx / JP
                     });
         pattern_possibleValues.insert(
                     key,
@@ -1456,7 +1479,10 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                         , "Synthetisch"  // NL
                         , "Syntet"  // SE
                         , "Synthetic Resin"
+                        , "Resina sintética"  //(MX-es)
+                        , "Sentetik Reçine" // TR
                         , "合成樹脂" // ≈65%
+                        , "Résine synthétique"
                     });
         pattern_possibleValues.insert(
                     key,
@@ -1724,7 +1750,7 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Sintetico"          // IT-it
                     , "Synthétique"        // FR-fr
                     , "Synthetik"          // DE-de
-                    , "Caoutchouc synthétique"
+                    , "Caoutchouc synthétique" // CA-fr
                     , "Synthetischer Gummi"
                     , "Gomma sintetica"
                     , "Synthetisch rubber"
@@ -1732,15 +1758,8 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Sentetik Kauçuk"
                     , "Synthetischer Gummi"
                     , "合成ゴム" // JP ≈85%
-                });
-    pattern_possibleValues.insert(
-                "sole_material",
-                QSet<QString>{
-                    "Synthetic Rubber" // CA-en, COM-en
-                    , "Caoutchouc synthétique" // CA-fr
                     , "Corcho sintético" // MX-es
-                    , "合成ゴム" // JP
-                    , "Synthetischer Gummi"
+                    , "Sentetik Kauçuk" // TR
                 });
     pattern_possibleValues.insert(
                 "sole_material",
@@ -1752,6 +1771,8 @@ const QMultiHash<QString, QSet<QString>> TemplateMergerFiller::AUTO_SELECT_PATTE
                     , "Termoplastiska elastomerer"     // SE-se
                     , "TPE"                            // BE-nl, IT-it, PL-pl
                     , "Élastomère thermoplastique"     // BE-fr, FR-fr
+                    , "Termoplastik Elastomerler"
+                    , "thermoplastic_elastomers"
                 });
 
     /*
@@ -1961,7 +1982,9 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"offering_end_date", "purchasable_offer#1.end_at.value"}
         , {"purchasable_offer#1.minimum_seller_allowed_price#1.schedule#1.value_with_tax", "purchasable_offer#1.minimum_seller_allowed_price#1.schedule#1.value_with_tax"}
         , {"purchasable_offer#1.maximum_seller_allowed_price#1.schedule#1.value_with_tax", "purchasable_offer#1.maximum_seller_allowed_price#1.schedule#1.value_with_tax"}
-        , {"sale_price", "purchasable_offer#1.our_price#1.schedule#1.value_with_tax"}
+        //, {"sale_price", "purchasable_offer#1.our_price#1.schedule#1.value_with_tax"}
+        , {"standard_price", "purchasable_offer#1.our_price#1.schedule#1.value_with_tax"}
+        , {"sale_price", "sale_price"}
         , {"product_tax_code", "product_tax_code#1.value"}
         , {"is_expiration_dated_product", "is_expiration_dated_product#1.value"}
         , {"unit_count", "unit_count#1.value"}
@@ -1993,7 +2016,6 @@ const QHash<QString, QString> TemplateMergerFiller::MAPPING_FIELD_ID
         , {"item_length_width#1.width.unit", "item_length_width#1.width.unit"}
 
         , {"package_weight", "item_package_weight#1.value"}
-        , {"standard_price", "purchasable_offer#1.our_price#1.schedule#1.value_with_tax"}
         , {"list_price_with_tax", "list_price#1.value_with_tax"}
         , {"list_price", "list_price#1.value"}
         , {"uvp_list_price", "uvp_list_price#1.value"}
@@ -2821,7 +2843,7 @@ void TemplateMergerFiller::_readParentSkus(
         QXlsx::Document &document,
         const QString &countryCode,
         const QString &langCode,
-        QMultiHash<QString, QString> &skuParent_skus)
+        QMultiHash<QString, QString> &skuParent_skus) const
 {
     _selectTemplateSheet(document);
     const auto &fieldId_index = _get_fieldId_index(document);
@@ -3065,6 +3087,140 @@ void TemplateMergerFiller:: _readSkus(QXlsx::Document &document,
             }
         }
     }
+}
+
+QString TemplateMergerFiller::getCustomAttributesText()
+{
+    const auto &countryCodeFrom = _getCountryCode(m_filePathFrom);
+    const auto &langCodeFrom = _getLangCode(m_filePathFrom);
+    QXlsx::Document document(m_filePathFrom);
+    QStringList skus;
+    QHash<QString, SkuInfo> sku_skuInfos;
+    QMultiHash<QString, QString> skuParent_skus;
+    QHash<QString, QHash<QString, QHash<QString, QHash<QString, QVariant>>>> sku_countryCode_langCode_fieldId_origValue;
+    _readParentSkus(document, countryCodeFrom, langCodeFrom, skuParent_skus);
+    _readSkus(document, countryCodeFrom, langCodeFrom, skus, sku_skuInfos, sku_countryCode_langCode_fieldId_origValue);
+
+    QString result;
+
+    static const QSet<QString> FIELD_IDS_CM_TO_INCH{
+        QStringLiteral("heel#1.height#1.decimal_value"),
+                QStringLiteral("footwear_platform_height#1.value"),
+                QStringLiteral("item_display_dimensions#1.height.value"),
+                QStringLiteral("item_display_dimensions#1.length.value"),
+                QStringLiteral("item_display_dimensions#1.width.value")
+    };
+
+    // baseSku -> (fieldId -> value)
+    QMap<QString, QMap<QString, QString>> baseSku_attributes;
+
+    // 1) For each parent, pick attributes from its children
+    const QList<QString> parentSkus = skuParent_skus.uniqueKeys();
+    for (const QString &parentSku : parentSkus)
+    {
+        // Extract common SKU between "P-" and next "-"
+        if (!parentSku.startsWith(QStringLiteral("P-")))
+            continue;
+
+        const QString baseSku = parentSku.mid(2).section(QLatin1Char('-'), 0, 0);
+        if (baseSku.isEmpty())
+            continue;
+
+        QMap<QString, QString> &attrMap = baseSku_attributes[baseSku];
+
+        // children for this parent
+        const QList<QString> childSkus = skuParent_skus.values(parentSku);
+        for (const QString &childSku : childSkus)
+        {
+            auto itSku = sku_countryCode_langCode_fieldId_origValue.constFind(childSku);
+            if (itSku == sku_countryCode_langCode_fieldId_origValue.cend())
+                continue;
+
+            const auto &countryMap = itSku.value();
+            auto itCountryEnd = countryMap.cend();
+            for (auto itCountry = countryMap.cbegin(); itCountry != itCountryEnd; ++itCountry)
+            {
+                const auto &langMap = itCountry.value();
+                auto itLangEnd = langMap.cend();
+                for (auto itLang = langMap.cbegin(); itLang != itLangEnd; ++itLang)
+                {
+                    const auto &fieldMap = itLang.value();
+                    auto itFieldEnd = fieldMap.cend();
+                    for (auto itField = fieldMap.cbegin(); itField != itFieldEnd; ++itField)
+                    {
+                        const QString &fieldId = itField.key();
+
+                        // Only keep attributes in FIELD_IDS_CUSTOM_INSTRUCTIONS
+                        if (!FIELD_IDS_CUSTOM_INSTRUCTIONS.contains(fieldId))
+                            continue;
+
+                        // Already have a value for this base SKU + field
+                        if (attrMap.contains(fieldId))
+                            continue;
+
+                        const QString valueStr = itField.value().toString().trimmed();
+                        if (valueStr.isEmpty())
+                            continue;
+
+                        attrMap.insert(fieldId, valueStr);
+                    }
+                }
+            }
+        }
+    }
+
+    // 2) Format text
+    auto itBaseEnd = baseSku_attributes.cend();
+    for (auto itBase = baseSku_attributes.cbegin(); itBase != itBaseEnd; ++itBase)
+    {
+        const QString &baseSku = itBase.key();
+        const QMap<QString, QString> &attrMap = itBase.value();
+        if (result.isEmpty())
+        {
+            result = "Attributes: ";
+        }
+
+        result += QStringLiteral("[%1]\n").arg(baseSku);
+
+        auto itAttrEnd = attrMap.cend();
+        for (auto itAttr = attrMap.cbegin(); itAttr != itAttrEnd; ++itAttr)
+        {
+            const QString &fieldId  = itAttr.key();
+            const QString &rawValue = itAttr.value();
+
+            if (FIELD_IDS_CM_TO_INCH.contains(fieldId))
+            {
+                bool ok = false;
+                const double cm = rawValue.toDouble(&ok);
+
+                if (ok)
+                {
+                    const double inches    = cm / 2.54;
+                    const QString cmStr     = QString::number(cm,     'f', 1);
+                    const QString inchesStr = QString::number(inches, 'f', 1);
+
+                    // Example: heel#1.height#1.decimal_value: 10.0 cm (3.9 inches)
+                    result += QStringLiteral("%1: %2 cm (%3 inches)\n")
+                            .arg(fieldId, cmStr, inchesStr);
+                }
+                else
+                {
+                    // Non-numeric, fallback
+                    result += QStringLiteral("%1: %2\n").arg(fieldId, rawValue);
+                }
+            }
+            else
+            {
+                // Non dimensional field
+                result += QStringLiteral("%1: %2\n").arg(fieldId, rawValue);
+            }
+        }
+
+        result += QLatin1Char('\n');
+    }
+
+    return result;
+
 }
 
 void TemplateMergerFiller::_setFilePathsToFill(const QStringList &keywordFilePaths,
@@ -4150,8 +4306,9 @@ void TemplateMergerFiller::_readValidValues(
         if (m_countryCode_langCode_fieldIdMandatory[countryCodeTo][langCodeTo].contains(fieldId))
         {
             const auto &possibleValues = itFieldId.value();
-            if (possibleValues.size() == 1
-                    || (possibleValues.size() == 2 && possibleValues[0] == possibleValues[1]))
+            if (!FIELD_IDS_FILLER.contains(fieldId)
+                    && (possibleValues.size() == 1
+                        || (possibleValues.size() == 2 && possibleValues[0] == possibleValues[1])))
             {
                 const auto &uniquePossibleValue = *possibleValues.begin();
                 for (auto itSku = m_sku_countryCode_langCode_fieldId_origValue.begin();
@@ -4162,7 +4319,6 @@ void TemplateMergerFiller::_readValidValues(
                     if (!isParent || !m_countryCode_langCode_fieldIdChildOnly[countryCodeTo][langCodeTo].contains(fieldId))
                     {
                         _recordValueAllVersion(m_sku_countryCode_langCode_fieldId_value[sku][countryCodeTo][langCodeTo], fieldId, uniquePossibleValue);
-
                     }
                 }
             }

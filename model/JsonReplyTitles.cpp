@@ -115,7 +115,10 @@ void JsonReplyTitles::record_fieldId_values(
                                     QStringList elements = title.split(" ");
                                     for (auto & element : elements)
                                     {
-                                        element[0] = element[0].toUpper();
+                                        if (element.size() > 0)
+                                        {
+                                            element[0] = element[0].toUpper();
+                                        }
                                     }
                                     title = elements.join(" ");
                                 }
